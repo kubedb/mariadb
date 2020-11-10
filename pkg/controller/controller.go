@@ -108,6 +108,14 @@ func (c *Controller) EnsureCustomResourceDefinitions() error {
 // Init initializes mariadb, DormantDB amd RestoreSessionForCluster watcher
 func (c *Controller) Init() error {
 	c.initWatcher()
+	// Initialize Stash initializer
+	stash.NewController(
+		c.Controller,
+		&c.Config.Initializers.Stash,
+		c,
+		c.Recorder,
+		c.WatchNamespace,
+	).InitWatcher(c.MaxNumRequeues, c.NumThreads, c.selector)
 	return nil
 }
 

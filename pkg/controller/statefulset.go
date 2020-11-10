@@ -72,6 +72,7 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 		return kutil.VerbUnchanged, err
 	}
 
+	// container for removing lost and found
 	initContainers := []core.Container{
 		{
 			Name:            "remove-lost-found",
@@ -468,6 +469,10 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 							Key: core.BasicAuthUsernameKey,
 						},
 					},
+				},
+				{
+					Name: "MYSQL_ALLOW_EMPTY_PASSWORD",
+					Value: "true",
 				},
 			}
 
