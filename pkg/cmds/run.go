@@ -19,7 +19,7 @@ package cmds
 import (
 	"io"
 
-	"kubedb.dev/percona-xtradb/pkg/cmds/server"
+	"kubedb.dev/mariadb/pkg/cmds/server"
 
 	"github.com/spf13/cobra"
 	"gomodules.xyz/x/log"
@@ -28,17 +28,17 @@ import (
 )
 
 func NewCmdRun(version string, out, errOut io.Writer, stopCh <-chan struct{}) *cobra.Command {
-	o := server.NewPerconaXtraDBServerOptions(out, errOut)
+	o := server.NewMariaDBServerOptions(out, errOut)
 
 	cmd := &cobra.Command{
 		Use:               "run",
-		Short:             "Launch PerconaXtraDB server",
+		Short:             "Launch MariaDB server",
 		DisableAutoGenTag: true,
 		PreRun: func(c *cobra.Command, args []string) {
 			cli.SendPeriodicAnalytics(c, version)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			log.Infoln("Starting percona-xtradb-server...")
+			log.Infoln("Starting mariadb-server...")
 
 			if err := o.Complete(); err != nil {
 				return err

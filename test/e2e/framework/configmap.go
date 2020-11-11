@@ -41,7 +41,7 @@ func (f *Framework) InitScriptConfigMap() (*core.ConfigMap, error) {
 	execOut.Reset()
 
 	sh.ShowCMD = true
-	if err := sh.Command(curlLoc, "-fsSL", "https://github.com/kubedb/percona-xtradb-init-scripts/raw/master/init.sql").Run(); err != nil {
+	if err := sh.Command(curlLoc, "-fsSL", "https://github.com/kubedb/mariadb-init-scripts/raw/master/init.sql").Run(); err != nil {
 		return nil, err
 	}
 

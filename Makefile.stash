@@ -28,11 +28,11 @@ stash-install:
 		--version $(STASH_VERSION) \
 		--namespace $(KUBE_NAMESPACE); \
 	kubectl wait --for=condition=Available apiservice -l 'app.kubernetes.io/name=stash,app.kubernetes.io/instance=stash-operator' --timeout=5m
-	curl -fsSL https://github.com/stashed/catalog/raw/$(STASH_CATALOG_VERSION)/deploy/script.sh | bash -s -- --catalog=stash-percona-xtradb --docker-registry=stashed
+	curl -fsSL https://github.com/stashed/catalog/raw/$(STASH_CATALOG_VERSION)/deploy/script.sh | bash -s -- --catalog=stash-mariadb --docker-registry=stashed
 
 .PHONY: stash-uninstall
 stash-uninstall:
-	curl -fsSL https://github.com/stashed/catalog/raw/$(STASH_CATALOG_VERSION)/deploy/script.sh | bash -s -- --catalog=stash-percona-xtradb --uninstall || true
+	curl -fsSL https://github.com/stashed/catalog/raw/$(STASH_CATALOG_VERSION)/deploy/script.sh | bash -s -- --catalog=stash-mariadb --uninstall || true
 	helm uninstall stash --namespace=$(KUBE_NAMESPACE) || true
 
 .PHONY: stash-purge

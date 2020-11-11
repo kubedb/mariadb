@@ -1,13 +1,9 @@
-## percona-xtradb-operator version
-
-Prints binary version number.
-
-### Synopsis
+## mariadb-operator version
 
 Prints binary version number.
 
 ```
-percona-xtradb-operator version [flags]
+mariadb-operator version [flags]
 ```
 
 ### Options
@@ -36,5 +32,5 @@ percona-xtradb-operator version [flags]
 
 ### SEE ALSO
 
-* [percona-xtradb-operator](percona-xtradb-operator.md)	 - 
+* [mariadb-operator](mariadb-operator.md)	 - 
 

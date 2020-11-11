@@ -44,7 +44,7 @@ func (f *Framework) EventuallyAppBinding(meta metav1.ObjectMeta) GomegaAsyncAsse
 }
 
 func (f *Framework) CheckAppBindingSpec(meta metav1.ObjectMeta) error {
-	px, err := f.GetPerconaXtraDB(meta)
+	px, err := f.GetMariaDB(meta)
 	Expect(err).NotTo(HaveOccurred())
 
 	appBinding, err := f.appCatalogClient.AppBindings(px.Namespace).Get(context.TODO(), px.Name, metav1.GetOptions{})

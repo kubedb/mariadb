@@ -28,6 +28,10 @@ const (
 	LabelDatabaseName = kubedb.GroupName + "/name"
 	LabelRole         = kubedb.GroupName + "/role"
 
+	ReplicationModeDetectorContainerName = "replication-mode-detector"
+	DatabasePodPrimary                   = "primary"
+	DatabasePodStandby                   = "standby"
+
 	ComponentDatabase     = "database"
 	RoleStats             = "stats"
 	DefaultStatsPath      = "/metrics"
@@ -39,10 +43,14 @@ const (
 
 	DBCustomConfigName = "custom-config"
 
+	DefaultCPULimit    = ".25"
+	DefaultMemoryLimit = "512Mi"
+
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
 	ElasticsearchKey = ResourceSingularElasticsearch + "." + kubedb.GroupName
 	MySQLKey         = ResourceSingularMySQL + "." + kubedb.GroupName
+	MariaDBKey       = ResourceSingularMariaDB + "." + kubedb.GroupName
 	PerconaXtraDBKey = ResourceSingularPerconaXtraDB + "." + kubedb.GroupName
 	MongoDBKey       = ResourceSingularMongoDB + "." + kubedb.GroupName
 	RedisKey         = ResourceSingularRedis + "." + kubedb.GroupName
@@ -56,7 +64,6 @@ const (
 	ElasticsearchTransportPort                   = 9300
 	ElasticsearchTransportPortName               = "transport"
 	ElasticsearchMetricsPort                     = 9600
-	ElasticsearchMetricsPortName                 = "metrics"
 	ElasticsearchIngestNodePrefix                = "ingest"
 	ElasticsearchDataNodePrefix                  = "data"
 	ElasticsearchMasterNodePrefix                = "master"
@@ -76,6 +83,10 @@ const (
 	ElasticsearchStatusGreen                     = "green"
 	ElasticsearchStatusYellow                    = "yellow"
 	ElasticsearchStatusRed                       = "red"
+	ElasticsearchInitSysctlContainerName         = "init-sysctl"
+	ElasticsearchInitConfigMergerContainerName   = "config-merger"
+	ElasticsearchContainerName                   = "elasticsearch"
+	ElasticsearchExporterContainerName           = "exporter"
 
 	// Ref:
 	//	- https://www.elastic.co/guide/en/elasticsearch/reference/7.6/heap-size.html#heap-size
@@ -122,11 +133,6 @@ const (
 	MySQLRootPassword          = "MYSQL_ROOT_PASSWORD"
 	MySQLName                  = "MYSQL_NAME"
 
-	MySQLContainerReplicationModeDetectorName = "replication-mode-detector"
-	MySQLPodPrimary                           = "primary"
-	MySQLPodStandby                           = "standby"
-	MySQLLabelRole                            = kubedb.GroupName + "/role"
-
 	MySQLTLSConfigCustom     = "custom"
 	MySQLTLSConfigSkipVerify = "skip-verify"
 	MySQLTLSConfigTrue       = "true"
@@ -143,6 +149,17 @@ const (
 	PerconaXtraDBInitDBMountPath              = "/docker-entrypoint-initdb.d"
 	PerconaXtraDBCustomConfigMountPath        = "/etc/percona-server.conf.d/"
 	PerconaXtraDBClusterCustomConfigMountPath = "/etc/percona-xtradb-cluster.conf.d/"
+
+	// =========================== MariaDB Constants ============================
+	MariaDBClusterRecommendedVersion    = "5.7"
+	MariaDBMaxClusterNameLength         = 32
+	MariaDBStandaloneReplicas           = 1
+	MariaDBDefaultClusterSize           = 3
+	MariaDBDataMountPath                = "/var/lib/mysql"
+	MariaDBDataLostFoundPath            = MariaDBDataMountPath + "lost+found"
+	MariaDBInitDBMountPath              = "/docker-entrypoint-initdb.d"
+	MariaDBCustomConfigMountPath        = "/etc/percona-server.conf.d/"
+	MariaDBClusterCustomConfigMountPath = "/etc/percona-xtradb-cluster.conf.d/"
 
 	// =========================== PostgreSQL Constants ============================
 	PostgresDatabasePortName       = "db"

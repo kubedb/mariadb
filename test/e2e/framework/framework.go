@@ -69,7 +69,7 @@ func New(
 		appCatalogClient: appCatalogClient,
 		stashClient:      stashClient,
 		//name:             "default",
-		namespace:    rand.WithUniqSuffix("percona-xtradb"),
+		namespace:    rand.WithUniqSuffix("mariadb"),
 		StorageClass: storageClass,
 	}
 }
@@ -77,7 +77,7 @@ func New(
 func (f *Framework) Invoke() *Invocation {
 	return &Invocation{
 		Framework: f,
-		app:       rand.WithUniqSuffix("percona-xtradb-e2e"),
+		app:       rand.WithUniqSuffix("mariadb-e2e"),
 	}
 }
 

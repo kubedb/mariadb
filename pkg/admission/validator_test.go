@@ -44,40 +44,40 @@ import (
 var requestKind = metaV1.GroupVersionKind{
 	Group:   api.SchemeGroupVersion.Group,
 	Version: api.SchemeGroupVersion.Version,
-	Kind:    api.ResourceKindPerconaXtraDB,
+	Kind:    api.ResourceKindMariaDB,
 }
 
-func TestPerconaXtraDBValidator_Admit(t *testing.T) {
+func TestMariaDBValidator_Admit(t *testing.T) {
 	if err := scheme.AddToScheme(clientSetScheme.Scheme); err != nil {
 		t.Error(err)
 	}
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
-			validator := PerconaXtraDBValidator{}
+			validator := MariaDBValidator{}
 
 			validator.initialized = true
 			validator.extClient = extFake.NewSimpleClientset(
-				&catalog.PerconaXtraDBVersion{
+				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "5.7",
 					},
-					Spec: catalog.PerconaXtraDBVersionSpec{
+					Spec: catalog.MariaDBVersionSpec{
 						Version: "5.7",
 					},
 				},
-				&catalog.PerconaXtraDBVersion{
+				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "5.6",
 					},
-					Spec: catalog.PerconaXtraDBVersionSpec{
+					Spec: catalog.MariaDBVersionSpec{
 						Version: "5.6",
 					},
 				},
-				&catalog.PerconaXtraDBVersion{
+				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "5.7.25",
 					},
-					Spec: catalog.PerconaXtraDBVersionSpec{
+					Spec: catalog.MariaDBVersionSpec{
 						Version: "5.7.25",
 					},
 				},
@@ -116,7 +116,7 @@ func TestPerconaXtraDBValidator_Admit(t *testing.T) {
 			req.OldObject.Raw = oldObjJS
 
 			if c.heatUp {
-				if _, err := validator.extClient.KubedbV1alpha2().PerconaXtraDBs(c.namespace).Create(context.TODO(), &c.object, metaV1.CreateOptions{}); err != nil && !kerr.IsAlreadyExists(err) {
+				if _, err := validator.extClient.KubedbV1alpha2().MariaDBs(c.namespace).Create(context.TODO(), &c.object, metaV1.CreateOptions{}); err != nil && !kerr.IsAlreadyExists(err) {
 					t.Errorf(err.Error())
 				}
 			}
@@ -148,48 +148,48 @@ var cases = []struct {
 	objectName string
 	namespace  string
 	operation  admission.Operation
-	object     api.PerconaXtraDB
-	oldObject  api.PerconaXtraDB
+	object     api.MariaDB
+	oldObject  api.MariaDB
 	heatUp     bool
 	result     bool
 }{
-	{"Create Valid PerconaXtraDB",
+	{"Create Valid MariaDB",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
-		samplePerconaXtraDB(),
-		api.PerconaXtraDB{},
+		sampleMariaDB(),
+		api.MariaDB{},
 		false,
 		true,
 	},
-	{"Create Invalid percona-xtradb",
+	{"Create Invalid mariadb",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
-		getAwkwardPerconaXtraDB(),
-		api.PerconaXtraDB{},
+		getAwkwardMariaDB(),
+		api.MariaDB{},
 		false,
 		false,
 	},
-	{"Edit PerconaXtraDB Spec.AuthSecret with Existing Secret",
+	{"Edit MariaDB Spec.AuthSecret with Existing Secret",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
-		editExistingSecret(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		editExistingSecret(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		true,
 	},
-	{"Edit PerconaXtraDB Spec.AuthSecret with non Existing Secret",
+	{"Edit MariaDB Spec.AuthSecret with non Existing Secret",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
-		editNonExistingSecret(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		editNonExistingSecret(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		true,
 	},
@@ -198,8 +198,8 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		editStatus(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		editStatus(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		true,
 	},
@@ -208,8 +208,8 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		editSpecMonitor(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		editSpecMonitor(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		true,
 	},
@@ -218,8 +218,8 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		editSpecInvalidMonitor(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		editSpecInvalidMonitor(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		false,
 	},
@@ -228,80 +228,80 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		pauseDatabase(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		pauseDatabase(sampleMariaDB()),
+		sampleMariaDB(),
 		false,
 		true,
 	},
-	{"Delete PerconaXtraDB when Spec.TerminationPolicy=DoNotTerminate",
+	{"Delete MariaDB when Spec.TerminationPolicy=DoNotTerminate",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
-		samplePerconaXtraDB(),
-		api.PerconaXtraDB{},
+		sampleMariaDB(),
+		api.MariaDB{},
 		true,
 		false,
 	},
-	{"Delete PerconaXtraDB when Spec.TerminationPolicy=Pause",
+	{"Delete MariaDB when Spec.TerminationPolicy=Pause",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
-		pauseDatabase(samplePerconaXtraDB()),
-		api.PerconaXtraDB{},
+		pauseDatabase(sampleMariaDB()),
+		api.MariaDB{},
 		true,
 		true,
 	},
-	{"Delete Non Existing PerconaXtraDB",
+	{"Delete Non Existing MariaDB",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
-		api.PerconaXtraDB{},
-		api.PerconaXtraDB{},
+		api.MariaDB{},
+		api.MariaDB{},
 		false,
 		true,
 	},
 
 	// XtraDB Cluster
-	{"Create a valid PerconaXtraDB Cluster",
+	{"Create a valid MariaDB Cluster",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		sampleValidXtraDBCluster(),
-		api.PerconaXtraDB{},
+		api.MariaDB{},
 		false,
 		true,
 	},
-	{"Create an invalid PerconaXtraDB Cluster containing initscript",
+	{"Create an invalid MariaDB Cluster containing initscript",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		sampleXtraDBClusterContainingInitsript(),
-		api.PerconaXtraDB{},
+		api.MariaDB{},
 		false,
 		false,
 	},
-	{"Create PerconaXtraDB Cluster with insufficient node replicas",
+	{"Create MariaDB Cluster with insufficient node replicas",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		insufficientNodeReplicas(),
-		api.PerconaXtraDB{},
+		api.MariaDB{},
 		false,
 		false,
 	},
-	{"Create PerconaXtraDB Cluster with larger cluster name than recommended",
+	{"Create MariaDB Cluster with larger cluster name than recommended",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		largerClusterNameThanRecommended(),
-		api.PerconaXtraDB{},
+		api.MariaDB{},
 		false,
 		false,
 	},
@@ -310,8 +310,8 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		updateInit(samplePerconaXtraDB()),
-		samplePerconaXtraDB(),
+		updateInit(sampleMariaDB()),
+		sampleMariaDB(),
 		true,
 		true,
 	},
@@ -320,27 +320,27 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Update,
-		updateInit(completeInitialization(samplePerconaXtraDB())),
-		completeInitialization(samplePerconaXtraDB()),
+		updateInit(completeInitialization(sampleMariaDB())),
+		completeInitialization(sampleMariaDB()),
 		true,
 		false,
 	},
 }
 
-func samplePerconaXtraDB() api.PerconaXtraDB {
-	return api.PerconaXtraDB{
+func sampleMariaDB() api.MariaDB {
+	return api.MariaDB{
 		TypeMeta: metaV1.TypeMeta{
-			Kind:       api.ResourceKindPerconaXtraDB,
+			Kind:       api.ResourceKindMariaDB,
 			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+				api.LabelDatabaseKind: api.ResourceKindMariaDB,
 			},
 		},
-		Spec: api.PerconaXtraDBSpec{
+		Spec: api.MariaDBSpec{
 			Version:     "5.7",
 			Replicas:    pointer.Int32P(1),
 			StorageType: api.StorageTypeDurable,
@@ -360,34 +360,34 @@ func samplePerconaXtraDB() api.PerconaXtraDB {
 	}
 }
 
-func getAwkwardPerconaXtraDB() api.PerconaXtraDB {
-	px := samplePerconaXtraDB()
+func getAwkwardMariaDB() api.MariaDB {
+	px := sampleMariaDB()
 	px.Spec.Version = "3.0"
 	return px
 }
 
-func editExistingSecret(old api.PerconaXtraDB) api.PerconaXtraDB {
+func editExistingSecret(old api.MariaDB) api.MariaDB {
 	old.Spec.AuthSecret = &core.LocalObjectReference{
 		Name: "foo-auth",
 	}
 	return old
 }
 
-func editNonExistingSecret(old api.PerconaXtraDB) api.PerconaXtraDB {
+func editNonExistingSecret(old api.MariaDB) api.MariaDB {
 	old.Spec.AuthSecret = &core.LocalObjectReference{
 		Name: "foo-auth-fused",
 	}
 	return old
 }
 
-func editStatus(old api.PerconaXtraDB) api.PerconaXtraDB {
-	old.Status = api.PerconaXtraDBStatus{
+func editStatus(old api.MariaDB) api.MariaDB {
+	old.Status = api.MariaDBStatus{
 		Phase: api.DatabasePhaseReady,
 	}
 	return old
 }
 
-func editSpecMonitor(old api.PerconaXtraDB) api.PerconaXtraDB {
+func editSpecMonitor(old api.MariaDB) api.MariaDB {
 	old.Spec.Monitor = &mona.AgentSpec{
 		Agent: mona.AgentPrometheusBuiltin,
 		Prometheus: &mona.PrometheusSpec{
@@ -400,65 +400,65 @@ func editSpecMonitor(old api.PerconaXtraDB) api.PerconaXtraDB {
 }
 
 // should be failed because more fields required for COreOS Monitoring
-func editSpecInvalidMonitor(old api.PerconaXtraDB) api.PerconaXtraDB {
+func editSpecInvalidMonitor(old api.MariaDB) api.MariaDB {
 	old.Spec.Monitor = &mona.AgentSpec{
 		Agent: mona.AgentPrometheusOperator,
 	}
 	return old
 }
 
-func pauseDatabase(old api.PerconaXtraDB) api.PerconaXtraDB {
+func pauseDatabase(old api.MariaDB) api.MariaDB {
 	old.Spec.TerminationPolicy = api.TerminationPolicyHalt
 	return old
 }
 
-func sampleXtraDBClusterContainingInitsript() api.PerconaXtraDB {
-	perconaxtradb := samplePerconaXtraDB()
-	perconaxtradb.Spec.Replicas = pointer.Int32P(api.PerconaXtraDBDefaultClusterSize)
-	perconaxtradb.Spec.Init = &api.InitSpec{
+func sampleXtraDBClusterContainingInitsript() api.MariaDB {
+	mariadb := sampleMariaDB()
+	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
+	mariadb.Spec.Init = &api.InitSpec{
 		Script: &api.ScriptSourceSpec{
 			VolumeSource: core.VolumeSource{
 				GitRepo: &core.GitRepoVolumeSource{
-					Repository: "https://kubedb.dev/percona-xtradb-init-scripts.git",
+					Repository: "https://kubedb.dev/mariadb-init-scripts.git",
 					Directory:  ".",
 				},
 			},
 		},
 	}
 
-	return perconaxtradb
+	return mariadb
 }
 
-func sampleValidXtraDBCluster() api.PerconaXtraDB {
-	perconaxtradb := samplePerconaXtraDB()
-	perconaxtradb.Spec.Replicas = pointer.Int32P(api.PerconaXtraDBDefaultClusterSize)
-	if perconaxtradb.Spec.Init != nil {
-		perconaxtradb.Spec.Init.Script = nil
+func sampleValidXtraDBCluster() api.MariaDB {
+	mariadb := sampleMariaDB()
+	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
+	if mariadb.Spec.Init != nil {
+		mariadb.Spec.Init.Script = nil
 	}
 
-	return perconaxtradb
+	return mariadb
 }
 
-func insufficientNodeReplicas() api.PerconaXtraDB {
-	perconaxtradb := sampleValidXtraDBCluster()
-	perconaxtradb.Spec.Replicas = pointer.Int32P(2)
+func insufficientNodeReplicas() api.MariaDB {
+	mariadb := sampleValidXtraDBCluster()
+	mariadb.Spec.Replicas = pointer.Int32P(2)
 
-	return perconaxtradb
+	return mariadb
 }
 
-func largerClusterNameThanRecommended() api.PerconaXtraDB {
-	perconaxtradb := sampleValidXtraDBCluster()
-	perconaxtradb.Name = "aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa"
+func largerClusterNameThanRecommended() api.MariaDB {
+	mariadb := sampleValidXtraDBCluster()
+	mariadb.Name = "aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa"
 
-	return perconaxtradb
+	return mariadb
 }
 
-func completeInitialization(old api.PerconaXtraDB) api.PerconaXtraDB {
+func completeInitialization(old api.MariaDB) api.MariaDB {
 	old.Spec.Init.Initialized = true
 	return old
 }
 
-func updateInit(old api.PerconaXtraDB) api.PerconaXtraDB {
+func updateInit(old api.MariaDB) api.MariaDB {
 	old.Spec.Init.WaitForInitialRestore = false
 	return old
 }

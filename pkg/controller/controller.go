@@ -57,10 +57,10 @@ type Controller struct {
 	// LabelSelector to filter Stash restore invokers only for this database
 	selector metav1.LabelSelector
 
-	// PerconaXtraDB
+	// MariaDB
 	pxQueue    *queue.Worker
 	pxInformer cache.SharedIndexInformer
-	pxLister   api_listers.PerconaXtraDBLister
+	pxLister   api_listers.MariaDBLister
 }
 
 func New(
@@ -88,7 +88,7 @@ func New(
 		promClient: promClient,
 		selector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+				api.LabelDatabaseKind: api.ResourceKindMariaDB,
 			},
 		},
 	}
@@ -98,14 +98,14 @@ func New(
 func (c *Controller) EnsureCustomResourceDefinitions() error {
 	log.Infoln("Ensuring CustomResourceDefinition...")
 	crds := []*apiextensions.CustomResourceDefinition{
-		api.PerconaXtraDB{}.CustomResourceDefinition(),
-		catalog.PerconaXtraDBVersion{}.CustomResourceDefinition(),
+		api.MariaDB{}.CustomResourceDefinition(),
+		catalog.MariaDBVersion{}.CustomResourceDefinition(),
 		appcat.AppBinding{}.CustomResourceDefinition(),
 	}
 	return apiextensions.RegisterCRDs(c.CRDClient, crds)
 }
 
-// Init initializes percona-xtradb, DormantDB amd RestoreSessionForCluster watcher
+// Init initializes mariadb, DormantDB amd RestoreSessionForCluster watcher
 func (c *Controller) Init() error {
 	c.initWatcher()
 	return nil
@@ -161,24 +161,24 @@ func (c *Controller) StartAndRunControllers(stopCh <-chan struct{}) {
 	// Initialize and start Stash controllers
 	go stash.NewController(c.Controller, &c.Config.Initializers.Stash, c.WatchNamespace).StartAfterStashInstalled(c.MaxNumRequeues, c.NumThreads, c.selector, stopCh)
 
-	// Start PerconaXtraDB controller
+	// Start MariaDB controller
 	c.RunControllers(stopCh)
 
 	<-stopCh
 	log.Infoln("Stopping KubeDB controller")
 }
 
-func (c *Controller) pushFailureEvent(db *api.PerconaXtraDB, reason string) {
+func (c *Controller) pushFailureEvent(db *api.MariaDB, reason string) {
 	c.Recorder.Eventf(
 		db,
 		core.EventTypeWarning,
 		eventer.EventReasonFailedToStart,
-		`Fail to be ready PerconaXtraDB: "%v". Reason: %v`,
+		`Fail to be ready MariaDB: "%v". Reason: %v`,
 		db.Name,
 		reason,
 	)
 
-	perconaXtraDB, err := util.UpdatePerconaXtraDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.PerconaXtraDBStatus) (types.UID, *api.PerconaXtraDBStatus) {
+	mariadb, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
 		in.Phase = api.DatabasePhaseNotReady
 		in.ObservedGeneration = db.Generation
 		return db.UID, in
@@ -192,5 +192,5 @@ func (c *Controller) pushFailureEvent(db *api.PerconaXtraDB, reason string) {
 			err.Error(),
 		)
 	}
-	db.Status = perconaXtraDB.Status
+	db.Status = mariadb.Status
 }

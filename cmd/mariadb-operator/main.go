@@ -19,7 +19,7 @@ package main
 import (
 	"log"
 
-	"kubedb.dev/percona-xtradb/pkg/cmds"
+	"kubedb.dev/mariadb/pkg/cmds"
 
 	_ "go.bytebuilders.dev/license-verifier/info"
 	_ "k8s.io/client-go/kubernetes/fake"

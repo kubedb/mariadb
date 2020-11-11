@@ -26,7 +26,7 @@ import (
 
 	cs "kubedb.dev/apimachinery/client/clientset/versioned"
 	"kubedb.dev/apimachinery/client/clientset/versioned/scheme"
-	"kubedb.dev/percona-xtradb/test/e2e/framework"
+	"kubedb.dev/mariadb/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
@@ -64,7 +64,7 @@ func init() {
 	flag.StringVar(&kubeContext, "kube-context", "", "Name of kube context")
 
 	flag.StringVar(&storageClass, "storageclass", storageClass, "Kubernetes StorageClass name")
-	flag.StringVar(&framework.DBCatalogName, "db-catalog", framework.DBCatalogName, "PerconaXtraDB version")
+	flag.StringVar(&framework.DBCatalogName, "db-catalog", framework.DBCatalogName, "MariaDB version")
 	flag.StringVar(&framework.DockerRegistry, "docker-registry", framework.DockerRegistry, "User provided docker repository")
 }
 
@@ -120,8 +120,8 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("Cleanup Left Overs")
-	By("Delete left over PerconaXtraDB objects")
-	root.CleanPerconaXtraDB()
+	By("Delete left over MariaDB objects")
+	root.CleanMariaDB()
 	By("Delete Namespace")
 	err := root.DeleteNamespace()
 	Expect(err).NotTo(HaveOccurred())

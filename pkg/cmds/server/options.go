@@ -25,7 +25,7 @@ import (
 	"kubedb.dev/apimachinery/pkg/controller/initializer/stash"
 	sts "kubedb.dev/apimachinery/pkg/controller/statefulset"
 	"kubedb.dev/apimachinery/pkg/eventer"
-	"kubedb.dev/percona-xtradb/pkg/controller"
+	"kubedb.dev/mariadb/pkg/controller"
 
 	prom "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
 	"github.com/spf13/pflag"
@@ -75,7 +75,7 @@ func (s *ExtraOptions) AddGoFlags(fs *flag.FlagSet) {
 }
 
 func (s *ExtraOptions) AddFlags(fs *pflag.FlagSet) {
-	pfs := flag.NewFlagSet("percona-xtradb-server", flag.ExitOnError)
+	pfs := flag.NewFlagSet("mariadb-server", flag.ExitOnError)
 	s.AddGoFlags(pfs)
 	fs.AddGoFlagSet(pfs)
 }
@@ -119,7 +119,7 @@ func (s *ExtraOptions) ApplyTo(cfg *controller.OperatorConfig) error {
 	cfg.KubeInformerFactory = informers.NewSharedInformerFactory(cfg.KubeClient, cfg.ResyncPeriod)
 	cfg.KubedbInformerFactory = kubedbinformers.NewSharedInformerFactory(cfg.DBClient, cfg.ResyncPeriod)
 	// Create event recorder
-	cfg.Recorder = eventer.NewEventRecorder(cfg.KubeClient, "PerconaXtraDB operator")
+	cfg.Recorder = eventer.NewEventRecorder(cfg.KubeClient, "MariaDB operator")
 	// Initialize StatefulSet watcher
 	sts.NewController(&cfg.Config, cfg.KubeClient, cfg.DBClient, cfg.DynamicClient).InitStsWatcher()
 	// Configure Stash initializer

@@ -30,8 +30,8 @@ import (
 	rbac_util "kmodules.xyz/client-go/rbac/v1"
 )
 
-func (c *Controller) createServiceAccount(db *api.PerconaXtraDB, saName string) error {
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+func (c *Controller) createServiceAccount(db *api.MariaDB, saName string) error {
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
 	// Create new ServiceAccount
 	_, _, err := core_util.CreateOrPatchServiceAccount(
@@ -51,8 +51,8 @@ func (c *Controller) createServiceAccount(db *api.PerconaXtraDB, saName string) 
 	return err
 }
 
-func (c *Controller) ensureRole(db *api.PerconaXtraDB, name string, pspName string) error {
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+func (c *Controller) ensureRole(db *api.MariaDB, name string, pspName string) error {
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
 	// Create new Role for ElasticSearch and it's Snapshot
 	_, _, err := rbac_util.CreateOrPatchRole(
@@ -82,8 +82,8 @@ func (c *Controller) ensureRole(db *api.PerconaXtraDB, name string, pspName stri
 	return err
 }
 
-func (c *Controller) createRoleBinding(db *api.PerconaXtraDB, name string) error {
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+func (c *Controller) createRoleBinding(db *api.MariaDB, name string) error {
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
 	// Ensure new RoleBindings for ElasticSearch and it's Snapshot
 	_, _, err := rbac_util.CreateOrPatchRoleBinding(
@@ -115,8 +115,8 @@ func (c *Controller) createRoleBinding(db *api.PerconaXtraDB, name string) error
 	return err
 }
 
-func (c *Controller) getPolicyNames(db *api.PerconaXtraDB) (string, error) {
-	dbVersion, err := c.DBClient.CatalogV1alpha1().PerconaXtraDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
+func (c *Controller) getPolicyNames(db *api.MariaDB) (string, error) {
+	dbVersion, err := c.DBClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +125,7 @@ func (c *Controller) getPolicyNames(db *api.PerconaXtraDB) (string, error) {
 	return dbPolicyName, nil
 }
 
-func (c *Controller) ensureRBACStuff(db *api.PerconaXtraDB) error {
+func (c *Controller) ensureRBACStuff(db *api.MariaDB) error {
 	dbPolicyName, err := c.getPolicyNames(db)
 	if err != nil {
 		return err

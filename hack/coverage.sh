@@ -17,7 +17,7 @@
 set -eou pipefail
 
 GOPATH=$(go env GOPATH)
-REPO_ROOT="$GOPATH/src/kubedb.dev/percona-xtradb"
+REPO_ROOT="$GOPATH/src/kubedb.dev/mariadb"
 
 pushd $REPO_ROOT
 

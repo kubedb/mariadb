@@ -31,13 +31,13 @@ import (
 )
 
 func (c *Controller) initWatcher() {
-	c.pxInformer = c.KubedbInformerFactory.Kubedb().V1alpha2().PerconaXtraDBs().Informer()
-	c.pxQueue = queue.New("PerconaXtraDB", c.MaxNumRequeues, c.NumThreads, c.runPerconaXtraDB)
-	c.pxLister = c.KubedbInformerFactory.Kubedb().V1alpha2().PerconaXtraDBs().Lister()
+	c.pxInformer = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Informer()
+	c.pxQueue = queue.New("MariaDB", c.MaxNumRequeues, c.NumThreads, c.runMariaDB)
+	c.pxLister = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Lister()
 	c.pxInformer.AddEventHandler(queue.NewChangeHandler(c.pxQueue.GetQueue()))
 }
 
-func (c *Controller) runPerconaXtraDB(key string) error {
+func (c *Controller) runMariaDB(key string) error {
 	log.Debugln("started processing, key:", key)
 	obj, exists, err := c.pxInformer.GetIndexer().GetByKey(key)
 	if err != nil {
@@ -46,25 +46,25 @@ func (c *Controller) runPerconaXtraDB(key string) error {
 	}
 
 	if !exists {
-		log.Debugf("PerconaXtraDB %s does not exist anymore", key)
+		log.Debugf("MariaDB %s does not exist anymore", key)
 	} else {
 		// Note that you also have to check the uid if you have a local controlled resource, which
-		// is dependent on the actual instance, to detect that a PerconaXtraDB was recreated with the same name
-		px := obj.(*api.PerconaXtraDB).DeepCopy()
+		// is dependent on the actual instance, to detect that a MariaDB was recreated with the same name
+		px := obj.(*api.MariaDB).DeepCopy()
 		if px.DeletionTimestamp != nil {
 			if core_util.HasFinalizer(px.ObjectMeta, kubedb.GroupName) {
 				if err := c.terminate(px); err != nil {
 					log.Errorln(err)
 					return err
 				}
-				_, _, err = util.PatchPerconaXtraDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+				_, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.MariaDB) *api.MariaDB {
 					in.ObjectMeta = core_util.RemoveFinalizer(in.ObjectMeta, kubedb.GroupName)
 					return in
 				}, metav1.PatchOptions{})
 				return err
 			}
 		} else {
-			px, _, err = util.PatchPerconaXtraDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+			px, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.MariaDB) *api.MariaDB {
 				in.ObjectMeta = core_util.AddFinalizer(in.ObjectMeta, kubedb.GroupName)
 				return in
 			}, metav1.PatchOptions{})

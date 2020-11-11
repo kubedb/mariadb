@@ -23,8 +23,8 @@ import (
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
-	"kubedb.dev/percona-xtradb/test/e2e/framework"
-	"kubedb.dev/percona-xtradb/test/e2e/matcher"
+	"kubedb.dev/mariadb/test/e2e/framework"
+	"kubedb.dev/mariadb/test/e2e/matcher"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,22 +53,22 @@ const (
 	googleBucketNameKey         = "GCS_BUCKET_NAME"
 )
 
-var _ = Describe("PerconaXtraDB", func() {
+var _ = Describe("MariaDB", func() {
 	var (
-		err                  error
-		f                    *framework.Invocation
-		perconaxtradb        *api.PerconaXtraDB
-		garbagePerconaXtraDB *api.PerconaXtraDBList
-		secret               *core.Secret
-		skipMessage          string
-		dbName               string
-		dbNameKubedb         string
+		err            error
+		f              *framework.Invocation
+		mariadb        *api.MariaDB
+		garbageMariaDB *api.MariaDBList
+		secret         *core.Secret
+		skipMessage    string
+		dbName         string
+		dbNameKubedb   string
 	)
 
 	BeforeEach(func() {
 		f = root.Invoke()
-		perconaxtradb = f.PerconaXtraDB()
-		garbagePerconaXtraDB = new(api.PerconaXtraDBList)
+		mariadb = f.MariaDB()
+		garbageMariaDB = new(api.MariaDBList)
 		skipMessage = ""
 		dbName = "mysql"
 		dbNameKubedb = "kubedb"
@@ -81,22 +81,22 @@ var _ = Describe("PerconaXtraDB", func() {
 	}
 
 	var createAndWaitForRunning = func() {
-		By("Create PerconaXtraDB: " + perconaxtradb.Name)
-		err = f.CreatePerconaXtraDB(perconaxtradb)
+		By("Create MariaDB: " + mariadb.Name)
+		err = f.CreateMariaDB(mariadb)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for Running PerconaXtraDB")
-		f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+		By("Wait for Running MariaDB")
+		f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 		By("Wait for AppBinding to create")
-		f.EventuallyAppBinding(perconaxtradb.ObjectMeta).Should(BeTrue())
+		f.EventuallyAppBinding(mariadb.ObjectMeta).Should(BeTrue())
 
 		By("Check valid AppBinding Specs")
-		err := f.CheckAppBindingSpec(perconaxtradb.ObjectMeta)
+		err := f.CheckAppBindingSpec(mariadb.ObjectMeta)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Waiting for database to be ready")
-		f.EventuallyDatabaseReady(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+		f.EventuallyDatabaseReady(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 	}
 
 	var create_Database_N_Table = func(meta metav1.ObjectMeta, podIndex int) {
@@ -121,50 +121,50 @@ var _ = Describe("PerconaXtraDB", func() {
 		if skipMessage != "" {
 			Skip(skipMessage)
 		}
-		// Create PerconaXtraDB
+		// Create MariaDB
 		createAndWaitForRunning()
 
 		By("Creating Table")
-		f.EventuallyCreateTable(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+		f.EventuallyCreateTable(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
 		By("Inserting Rows")
-		f.EventuallyInsertRow(perconaxtradb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
+		f.EventuallyInsertRow(mariadb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
 
 		By("Checking Row Count of Table")
-		f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+		f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-		By("Delete PerconaXtraDB")
-		err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+		By("Delete MariaDB")
+		err = f.DeleteMariaDB(mariadb.ObjectMeta)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for perconaxtradb to be deleted")
-		f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+		By("Wait for mariadb to be deleted")
+		f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-		// Create PerconaXtraDB object again to resume it
-		By("Create PerconaXtraDB: " + perconaxtradb.Name)
-		err = f.CreatePerconaXtraDB(perconaxtradb)
+		// Create MariaDB object again to resume it
+		By("Create MariaDB: " + mariadb.Name)
+		err = f.CreateMariaDB(mariadb)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for Running PerconaXtraDB")
-		f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+		By("Wait for Running MariaDB")
+		f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 		By("Checking Row Count of Table")
-		f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+		f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
 	}
 
 	var shouldInsertData = func() {
-		// Create and wait for running PerconaXtraDB
+		// Create and wait for running MariaDB
 		createAndWaitForRunning()
 
 		By("Creating Table")
-		f.EventuallyCreateTable(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+		f.EventuallyCreateTable(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
 		By("Inserting Row")
-		f.EventuallyInsertRow(perconaxtradb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
+		f.EventuallyInsertRow(mariadb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
 
 		By("Checking Row Count of Table")
-		f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+		f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
 		By("Create Secret")
 		err := f.CreateSecret(secret)
@@ -173,45 +173,45 @@ var _ = Describe("PerconaXtraDB", func() {
 	}
 
 	var deleteTestResource = func() {
-		if perconaxtradb == nil {
-			log.Infoln("Skipping cleanup. Reason: PerconaXtraDB object is nil")
+		if mariadb == nil {
+			log.Infoln("Skipping cleanup. Reason: MariaDB object is nil")
 			return
 		}
 
-		By("Check if perconaxtradb " + perconaxtradb.Name + " exists.")
-		px, err := f.GetPerconaXtraDB(perconaxtradb.ObjectMeta)
+		By("Check if mariadb " + mariadb.Name + " exists.")
+		px, err := f.GetMariaDB(mariadb.ObjectMeta)
 		if err != nil && kerr.IsNotFound(err) {
-			// PerconaXtraDB was not created. Hence, rest of cleanup is not necessary.
+			// MariaDB was not created. Hence, rest of cleanup is not necessary.
 			return
 		}
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Update perconaxtradb to set spec.terminationPolicy = WipeOut")
-		_, err = f.PatchPerconaXtraDB(px.ObjectMeta, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+		By("Update mariadb to set spec.terminationPolicy = WipeOut")
+		_, err = f.PatchMariaDB(px.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
 			in.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
 			return in
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Delete perconaxtradb")
-		err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+		By("Delete mariadb")
+		err = f.DeleteMariaDB(mariadb.ObjectMeta)
 		if err != nil && kerr.IsNotFound(err) {
-			// PerconaXtraDB was not created. Hence, rest of cleanup is not necessary.
+			// MariaDB was not created. Hence, rest of cleanup is not necessary.
 			return
 		}
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for perconaxtradb to be deleted")
-		f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+		By("Wait for mariadb to be deleted")
+		f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-		By("Wait for perconaxtradb resources to be wipedOut")
-		f.EventuallyWipedOut(perconaxtradb.ObjectMeta).Should(Succeed())
+		By("Wait for mariadb resources to be wipedOut")
+		f.EventuallyWipedOut(mariadb.ObjectMeta).Should(Succeed())
 	}
 
 	var deleteLeftOverStuffs = func() {
-		// old PerconaXtraDB are in garbagePerconaXtraDB list. delete their resources.
-		for _, p := range garbagePerconaXtraDB.Items {
-			*perconaxtradb = p
+		// old MariaDB are in garbageMariaDB list. delete their resources.
+		for _, p := range garbageMariaDB.Items {
+			*mariadb = p
 			deleteTestResource()
 		}
 
@@ -220,12 +220,12 @@ var _ = Describe("PerconaXtraDB", func() {
 	}
 
 	AfterEach(func() {
-		// delete resources for current PerconaXtraDB
+		// delete resources for current MariaDB
 		deleteTestResource()
 
-		// old PerconaXtraDB are in garbagePerconaXtraDB list. delete their resources.
-		for _, pc := range garbagePerconaXtraDB.Items {
-			*perconaxtradb = pc
+		// old MariaDB are in garbageMariaDB list. delete their resources.
+		for _, pc := range garbageMariaDB.Items {
+			*mariadb = pc
 			deleteTestResource()
 		}
 
@@ -235,7 +235,7 @@ var _ = Describe("PerconaXtraDB", func() {
 
 	JustAfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			f.PrintDebugHelpers(perconaxtradb.Name, int(*perconaxtradb.Spec.Replicas))
+			f.PrintDebugHelpers(mariadb.Name, int(*mariadb.Spec.Replicas))
 		}
 	})
 
@@ -256,7 +256,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					By("Create init Script ConfigMap: " + initScriptConfigmap.Name + "\n" + initScriptConfigmap.Data["init.sql"])
 					Expect(f.CreateConfigMap(initScriptConfigmap)).ShouldNot(HaveOccurred())
 
-					perconaxtradb.Spec.Init = &api.InitSpec{
+					mariadb.Spec.Init = &api.InitSpec{
 						Script: &api.ScriptSourceSpec{
 							VolumeSource: core.VolumeSource{
 								ConfigMap: &core.ConfigMapVolumeSource{
@@ -275,18 +275,18 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				It("should run successfully", func() {
-					// Create PerconaXtraDB
+					// Create MariaDB
 					createAndWaitForRunning()
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 				})
 			})
 
 			// To run this test,
 			// 1st: Deploy stash latest operator
 			// 2nd: create mysql related tasks and functions either
-			//	 or	from helm chart in `stash.appscode.dev/percona-xtradb/chart/stash-percona-xtradb`
+			//	 or	from helm chart in `stash.appscode.dev/mariadb/chart/stash-mariadb`
 			Context("With Stash/Restic", func() {
 				var bc *stashV1beta1.BackupConfiguration
 				var bs *stashV1beta1.BackupSession
@@ -326,21 +326,21 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				var createAndWaitForInitializing = func() {
-					By("Creating PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					By("Creating MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for restoring perconaxtradb")
-					f.EventuallyPerconaXtraDBPhase(perconaxtradb.ObjectMeta).Should(Equal(api.DatabasePhaseDataRestoring))
+					By("Wait for restoring mariadb")
+					f.EventuallyMariaDBPhase(mariadb.ObjectMeta).Should(Equal(api.DatabasePhaseDataRestoring))
 				}
 
 				var shouldInitializeFromStash = func() {
 					// Create and wait for running MySQL
 					createAndWaitForRunning()
 
-					create_Database_N_Table(perconaxtradb.ObjectMeta, 0)
-					insertRows(perconaxtradb.ObjectMeta, 0, 3)
-					countRows(perconaxtradb.ObjectMeta, 0, 3)
+					create_Database_N_Table(mariadb.ObjectMeta, 0)
+					insertRows(mariadb.ObjectMeta, 0, 3)
+					countRows(mariadb.ObjectMeta, 0, 3)
 
 					By("Create Secret")
 					err = f.CreateSecret(secret)
@@ -361,16 +361,16 @@ var _ = Describe("PerconaXtraDB", func() {
 					By("Check for Succeeded backupsession")
 					f.EventuallyBackupSessionPhase(bs.ObjectMeta).Should(Equal(stashV1beta1.BackupSessionSucceeded))
 
-					oldPerconaXtraDB, err := f.GetPerconaXtraDB(perconaxtradb.ObjectMeta)
+					oldMariaDB, err := f.GetMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					garbagePerconaXtraDB.Items = append(garbagePerconaXtraDB.Items, *oldPerconaXtraDB)
+					garbageMariaDB.Items = append(garbageMariaDB.Items, *oldMariaDB)
 
-					By("Create PerconaXtraDB for initializing from stash")
-					*perconaxtradb = *f.PerconaXtraDB()
-					rs = f.RestoreSessionForStandalone(perconaxtradb.ObjectMeta, oldPerconaXtraDB.ObjectMeta)
-					perconaxtradb.Spec.AuthSecret = oldPerconaXtraDB.Spec.AuthSecret
-					perconaxtradb.Spec.Init = &api.InitSpec{
+					By("Create MariaDB for initializing from stash")
+					*mariadb = *f.MariaDB()
+					rs = f.RestoreSessionForStandalone(mariadb.ObjectMeta, oldMariaDB.ObjectMeta)
+					mariadb.Spec.AuthSecret = oldMariaDB.Spec.AuthSecret
+					mariadb.Spec.Init = &api.InitSpec{
 						WaitForInitialRestore: true,
 					}
 
@@ -385,20 +385,20 @@ var _ = Describe("PerconaXtraDB", func() {
 					By("Check for Succeeded restoreSession")
 					f.EventuallyRestoreSessionPhase(rs.ObjectMeta).Should(Equal(stashV1beta1.RestoreSucceeded))
 
-					By("Wait for Running perconaxtradb")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Wait for Running mariadb")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Wait for AppBinding to create")
-					f.EventuallyAppBinding(perconaxtradb.ObjectMeta).Should(BeTrue())
+					f.EventuallyAppBinding(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Check valid AppBinding Specs")
-					err = f.CheckAppBindingSpec(perconaxtradb.ObjectMeta)
+					err = f.CheckAppBindingSpec(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
 					By("Waiting for database to be ready")
-					f.EventuallyDatabaseReady(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+					f.EventuallyDatabaseReady(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
-					countRows(perconaxtradb.ObjectMeta, 0, 3)
+					countRows(mariadb.ObjectMeta, 0, 3)
 				}
 
 				Context("From GCS backend", func() {
@@ -406,13 +406,13 @@ var _ = Describe("PerconaXtraDB", func() {
 					BeforeEach(func() {
 						secret = f.SecretForGCSBackend()
 						secret = f.PatchSecretForRestic(secret)
-						bc = f.BackupConfiguration(perconaxtradb.ObjectMeta)
-						repo = f.Repository(perconaxtradb.ObjectMeta, secret.Name)
+						bc = f.BackupConfiguration(mariadb.ObjectMeta)
+						repo = f.Repository(mariadb.ObjectMeta, secret.Name)
 
 						repo.Spec.Backend = store.Backend{
 							GCS: &store.GCSSpec{
 								Bucket: os.Getenv(googleBucketNameKey),
-								Prefix: fmt.Sprintf("stash/%v/%v", perconaxtradb.Namespace, perconaxtradb.Name),
+								Prefix: fmt.Sprintf("stash/%v/%v", mariadb.Namespace, mariadb.Name),
 							},
 							StorageSecretName: secret.Name,
 						}
@@ -426,82 +426,82 @@ var _ = Describe("PerconaXtraDB", func() {
 		Context("Resume", func() {
 			Context("Super Fast User - Create-Delete-Create-Delete-Create ", func() {
 				It("should resume DormantDatabase successfully", func() {
-					// Create and wait for running PerconaXtraDB
+					// Create and wait for running MariaDB
 					createAndWaitForRunning()
 
 					By("Creating Table")
-					f.EventuallyCreateTable(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+					f.EventuallyCreateTable(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
 					By("Inserting Row")
-					f.EventuallyInsertRow(perconaxtradb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
+					f.EventuallyInsertRow(mariadb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for perconaxtradb to be deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("Wait for mariadb to be deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-					// Create PerconaXtraDB object again to resume it
-					By("Create PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					// Create MariaDB object again to resume it
+					By("Create MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
 					// Delete without caring if DB is resumed
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for PerconaXtraDB to be deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("Wait for MariaDB to be deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-					// Create PerconaXtraDB object again to resume it
-					By("Create PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					// Create MariaDB object again to resume it
+					By("Create MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for Running PerconaXtraDB")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Wait for Running MariaDB")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 				})
 			})
 
 			Context("Without Init", func() {
 				It("should resume DormantDatabase successfully", func() {
-					// Create and wait for running PerconaXtraDB
+					// Create and wait for running MariaDB
 					createAndWaitForRunning()
 
 					By("Creating Table")
-					f.EventuallyCreateTable(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+					f.EventuallyCreateTable(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
 					By("Inserting Row")
-					f.EventuallyInsertRow(perconaxtradb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
+					f.EventuallyInsertRow(mariadb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for perconaxtradb to be deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("Wait for mariadb to be deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-					// Create PerconaXtraDB object again to resume it
-					By("Create PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					// Create MariaDB object again to resume it
+					By("Create MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for Running PerconaXtraDB")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Wait for Running MariaDB")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 				})
 			})
 
@@ -514,7 +514,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					By("Create init Script ConfigMap: " + initScriptConfigmap.Name + "\n" + initScriptConfigmap.Data["init.sql"])
 					Expect(f.CreateConfigMap(initScriptConfigmap)).ShouldNot(HaveOccurred())
 
-					perconaxtradb.Spec.Init = &api.InitSpec{
+					mariadb.Spec.Init = &api.InitSpec{
 						Script: &api.ScriptSourceSpec{
 							VolumeSource: core.VolumeSource{
 								ConfigMap: &core.ConfigMapVolumeSource{
@@ -533,36 +533,36 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				It("should resume DormantDatabase successfully", func() {
-					// Create and wait for running PerconaXtraDB
+					// Create and wait for running MariaDB
 					createAndWaitForRunning()
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for perconaxtradb to be deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("Wait for mariadb to be deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-					// Create PerconaXtraDB object again to resume it
-					By("Create PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					// Create MariaDB object again to resume it
+					By("Create MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for Running PerconaXtraDB")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Wait for Running MariaDB")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-					perconaxtradb, err := f.GetPerconaXtraDB(perconaxtradb.ObjectMeta)
+					mariadb, err := f.GetMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(perconaxtradb.Spec.Init).NotTo(BeNil())
+					Expect(mariadb.Spec.Init).NotTo(BeNil())
 
-					By("Checking PerconaXtraDB crd does not have DataRestored condition")
-					Expect(kmapi.HasCondition(perconaxtradb.Status.Conditions, api.DatabaseDataRestored)).To(BeFalse())
+					By("Checking MariaDB crd does not have DataRestored condition")
+					Expect(kmapi.HasCondition(mariadb.Status.Conditions, api.DatabaseDataRestored)).To(BeFalse())
 				})
 			})
 
@@ -575,7 +575,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					By("Create init Script ConfigMap: " + initScriptConfigmap.Name + "\n" + initScriptConfigmap.Data["init.sql"])
 					Expect(f.CreateConfigMap(initScriptConfigmap)).ShouldNot(HaveOccurred())
 
-					perconaxtradb.Spec.Init = &api.InitSpec{
+					mariadb.Spec.Init = &api.InitSpec{
 						Script: &api.ScriptSourceSpec{
 							VolumeSource: core.VolumeSource{
 								ConfigMap: &core.ConfigMapVolumeSource{
@@ -594,39 +594,39 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				It("should resume DormantDatabase successfully", func() {
-					// Create and wait for running PerconaXtraDB
+					// Create and wait for running MariaDB
 					createAndWaitForRunning()
 
 					By("Checking Row Count of Table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
 					for i := 0; i < 3; i++ {
 						By(fmt.Sprintf("%v-th", i+1) + " time running.")
 
-						By("Delete PerconaXtraDB")
-						err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+						By("Delete MariaDB")
+						err = f.DeleteMariaDB(mariadb.ObjectMeta)
 						Expect(err).NotTo(HaveOccurred())
 
-						By("Wait for perconaxtradb to be deleted")
-						f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+						By("Wait for mariadb to be deleted")
+						f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-						// Create PerconaXtraDB object again to resume it
-						By("Create PerconaXtraDB: " + perconaxtradb.Name)
-						err = f.CreatePerconaXtraDB(perconaxtradb)
+						// Create MariaDB object again to resume it
+						By("Create MariaDB: " + mariadb.Name)
+						err = f.CreateMariaDB(mariadb)
 						Expect(err).NotTo(HaveOccurred())
 
-						By("Wait for Running PerconaXtraDB")
-						f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+						By("Wait for Running MariaDB")
+						f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 						By("Checking Row Count of Table")
-						f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+						f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 
-						perconaxtradb, err := f.GetPerconaXtraDB(perconaxtradb.ObjectMeta)
+						mariadb, err := f.GetMariaDB(mariadb.ObjectMeta)
 						Expect(err).NotTo(HaveOccurred())
-						Expect(perconaxtradb.Spec.Init).ShouldNot(BeNil())
+						Expect(mariadb.Spec.Init).ShouldNot(BeNil())
 
-						By("Checking PerconaXtraDB crd does not have DataRestored condition")
-						Expect(kmapi.HasCondition(perconaxtradb.Status.Conditions, api.DatabaseDataRestored)).To(BeFalse())
+						By("Checking MariaDB crd does not have DataRestored condition")
+						Expect(kmapi.HasCondition(mariadb.Status.Conditions, api.DatabaseDataRestored)).To(BeFalse())
 					}
 				})
 			})
@@ -641,31 +641,31 @@ var _ = Describe("PerconaXtraDB", func() {
 				//snapshot.Spec.GCS = &store.GCSSpec{
 				//	Bucket: os.Getenv(GCS_BUCKET_NAME),
 				//}
-				//snapshot.Spec.DatabaseName = perconaxtradb.Name
+				//snapshot.Spec.DatabaseName = mariadb.Name
 			})
 
 			Context("with TerminationDoNotTerminate", func() {
 				BeforeEach(func() {
 					//skipDataChecking = true
-					perconaxtradb.Spec.TerminationPolicy = api.TerminationPolicyDoNotTerminate
+					mariadb.Spec.TerminationPolicy = api.TerminationPolicyDoNotTerminate
 				})
 
 				It("should work successfully", func() {
-					// Create and wait for running PerconaXtraDB
+					// Create and wait for running MariaDB
 					createAndWaitForRunning()
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).Should(HaveOccurred())
 
-					By("PerconaXtraDB is not paused. Check for PerconaXtraDB")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("MariaDB is not paused. Check for MariaDB")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeTrue())
 
-					By("Check for Running PerconaXtraDB")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Check for Running MariaDB")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
-					By("Update PerconaXtraDB to set spec.terminationPolicy = Pause")
-					_, err := f.PatchPerconaXtraDB(perconaxtradb.ObjectMeta, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+					By("Update MariaDB to set spec.terminationPolicy = Pause")
+					_, err := f.PatchMariaDB(mariadb.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
 						in.Spec.TerminationPolicy = api.TerminationPolicyHalt
 						return in
 					})
@@ -684,39 +684,39 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				It("should create DormantDatabase and resume from it", func() {
-					// Run PerconaXtraDB and take snapshot
+					// Run MariaDB and take snapshot
 					shouldInsertData()
 
-					By("Deleting PerconaXtraDB crd")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Deleting MariaDB crd")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for perconaxtradb to be deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("Wait for mariadb to be deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
 					By("Checking PVC hasn't been deleted")
-					f.EventuallyPVCCount(perconaxtradb.ObjectMeta).Should(Equal(1))
+					f.EventuallyPVCCount(mariadb.ObjectMeta).Should(Equal(1))
 
 					By("Checking Secret hasn't been deleted")
-					f.EventuallyDBSecretCount(perconaxtradb.ObjectMeta).Should(Equal(1))
+					f.EventuallyDBSecretCount(mariadb.ObjectMeta).Should(Equal(1))
 
-					// Create PerconaXtraDB object again to resume it
-					By("Create (resume) PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					// Create MariaDB object again to resume it
+					By("Create (resume) MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("Wait for Running PerconaXtraDB")
-					f.EventuallyPerconaXtraDBReady(perconaxtradb.ObjectMeta).Should(BeTrue())
+					By("Wait for Running MariaDB")
+					f.EventuallyMariaDBReady(mariadb.ObjectMeta).Should(BeTrue())
 
 					By("Checking row count of table")
-					f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+					f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 				})
 			})
 
 			Context("with TerminationPolicyDelete", func() {
 
 				BeforeEach(func() {
-					perconaxtradb.Spec.TerminationPolicy = api.TerminationPolicyDelete
+					mariadb.Spec.TerminationPolicy = api.TerminationPolicyDelete
 				})
 
 				AfterEach(func() {
@@ -728,43 +728,43 @@ var _ = Describe("PerconaXtraDB", func() {
 				})
 
 				It("should not create DormantDatabase and should not delete secret", func() {
-					// Run PerconaXtraDB and take snapshot
+					// Run MariaDB and take snapshot
 					shouldInsertData()
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("wait until PerconaXtraDB is deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("wait until MariaDB is deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
 					By("Checking PVC has been deleted")
-					f.EventuallyPVCCount(perconaxtradb.ObjectMeta).Should(Equal(0))
+					f.EventuallyPVCCount(mariadb.ObjectMeta).Should(Equal(0))
 
 					By("Checking Secret hasn't been deleted")
-					f.EventuallyDBSecretCount(perconaxtradb.ObjectMeta).Should(Equal(1))
+					f.EventuallyDBSecretCount(mariadb.ObjectMeta).Should(Equal(1))
 				})
 			})
 
 			Context("with TerminationPolicyWipeOut", func() {
 
 				BeforeEach(func() {
-					perconaxtradb.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
+					mariadb.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
 				})
 
 				It("should not create DormantDatabase and should wipeOut all", func() {
-					// Run PerconaXtraDB and take snapshot
+					// Run MariaDB and take snapshot
 					shouldInsertData()
 
-					By("Delete PerconaXtraDB")
-					err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+					By("Delete MariaDB")
+					err = f.DeleteMariaDB(mariadb.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("wait until PerconaXtraDB is deleted")
-					f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+					By("wait until MariaDB is deleted")
+					f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
 					By("Checking PVCs has been deleted")
-					f.EventuallyPVCCount(perconaxtradb.ObjectMeta).Should(Equal(0))
+					f.EventuallyPVCCount(mariadb.ObjectMeta).Should(Equal(0))
 				})
 			})
 		})
@@ -777,7 +777,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					}
 
 					dbName = f.App()
-					perconaxtradb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
+					mariadb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
 						{
 							Name:  MYSQL_DATABASE,
 							Value: dbName,
@@ -789,19 +789,19 @@ var _ = Describe("PerconaXtraDB", func() {
 			})
 
 			Context("Root Password as EnvVar", func() {
-				It("should reject to create PerconaXtraDB CRD", func() {
+				It("should reject to create MariaDB CRD", func() {
 					if skipMessage != "" {
 						Skip(skipMessage)
 					}
 
-					perconaxtradb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
+					mariadb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
 						{
 							Name:  MYSQL_ROOT_PASSWORD,
 							Value: "not@secret",
 						},
 					}
-					By("Create PerconaXtraDB: " + perconaxtradb.Name)
-					err = f.CreatePerconaXtraDB(perconaxtradb)
+					By("Create MariaDB: " + mariadb.Name)
+					err = f.CreateMariaDB(mariadb)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -813,7 +813,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					}
 
 					dbName = f.App()
-					perconaxtradb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
+					mariadb.Spec.PodTemplate.Spec.Env = []core.EnvVar{
 						{
 							Name:  MYSQL_DATABASE,
 							Value: dbName,
@@ -823,7 +823,7 @@ var _ = Describe("PerconaXtraDB", func() {
 					testGeneralBehaviour()
 
 					By("Patching EnvVar")
-					_, _, err = util.PatchPerconaXtraDB(context.TODO(), f.ExtClient().KubedbV1alpha2(), perconaxtradb, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+					_, _, err = util.PatchMariaDB(context.TODO(), f.ExtClient().KubedbV1alpha2(), mariadb, func(in *api.MariaDB) *api.MariaDB {
 						in.Spec.PodTemplate.Spec.Env = []core.EnvVar{
 							{
 								Name:  MYSQL_DATABASE,
@@ -867,16 +867,16 @@ var _ = Describe("PerconaXtraDB", func() {
 					err := f.CreateSecret(userConfig)
 					Expect(err).NotTo(HaveOccurred())
 
-					perconaxtradb.Spec.ConfigSecret = &core.LocalObjectReference{
+					mariadb.Spec.ConfigSecret = &core.LocalObjectReference{
 						Name: userConfig.Name,
 					}
 
-					// Create PerconaXtraDB
+					// Create MariaDB
 					createAndWaitForRunning()
 
-					By("Checking PerconaXtraDB configured from provided custom configuration")
+					By("Checking MariaDB configured from provided custom configuration")
 					for _, cfg := range customConfigs {
-						f.EventuallyPerconaXtraDBVariable(perconaxtradb.ObjectMeta, dbName, 0, cfg).Should(matcher.UseCustomConfig(cfg))
+						f.EventuallyMariaDBVariable(mariadb.ObjectMeta, dbName, 0, cfg).Should(matcher.UseCustomConfig(cfg))
 					}
 				})
 			})
@@ -888,25 +888,25 @@ var _ = Describe("PerconaXtraDB", func() {
 					Skip(skipMessage)
 				}
 
-				// Create PerconaXtraDB
+				// Create MariaDB
 				createAndWaitForRunning()
 
 				By("Creating Table")
-				f.EventuallyCreateTable(perconaxtradb.ObjectMeta, dbName, 0).Should(BeTrue())
+				f.EventuallyCreateTable(mariadb.ObjectMeta, dbName, 0).Should(BeTrue())
 
 				By("Inserting Rows")
-				f.EventuallyInsertRow(perconaxtradb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
+				f.EventuallyInsertRow(mariadb.ObjectMeta, dbName, 0, 3).Should(BeTrue())
 
 				By("Checking Row Count of Table")
-				f.EventuallyCountRow(perconaxtradb.ObjectMeta, dbName, 0).Should(Equal(3))
+				f.EventuallyCountRow(mariadb.ObjectMeta, dbName, 0).Should(Equal(3))
 			}
 
 			Context("Ephemeral", func() {
 				Context("General Behaviour", func() {
 					BeforeEach(func() {
-						perconaxtradb.Spec.StorageType = api.StorageTypeEphemeral
-						perconaxtradb.Spec.Storage = nil
-						perconaxtradb.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
+						mariadb.Spec.StorageType = api.StorageTypeEphemeral
+						mariadb.Spec.Storage = nil
+						mariadb.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
 					})
 
 					It("should run successfully", shouldRunSuccessfully)
@@ -914,15 +914,15 @@ var _ = Describe("PerconaXtraDB", func() {
 
 				Context("With TerminationPolicyHalt", func() {
 					BeforeEach(func() {
-						perconaxtradb.Spec.StorageType = api.StorageTypeEphemeral
-						perconaxtradb.Spec.Storage = nil
-						perconaxtradb.Spec.TerminationPolicy = api.TerminationPolicyHalt
+						mariadb.Spec.StorageType = api.StorageTypeEphemeral
+						mariadb.Spec.Storage = nil
+						mariadb.Spec.TerminationPolicy = api.TerminationPolicyHalt
 					})
 
-					It("should reject to create PerconaXtraDB object", func() {
+					It("should reject to create MariaDB object", func() {
 
-						By("Creating PerconaXtraDB: " + perconaxtradb.Name)
-						err := f.CreatePerconaXtraDB(perconaxtradb)
+						By("Creating MariaDB: " + mariadb.Name)
+						err := f.CreateMariaDB(mariadb)
 						Expect(err).To(HaveOccurred())
 					})
 				})

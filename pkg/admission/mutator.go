@@ -33,28 +33,28 @@ import (
 	hookapi "kmodules.xyz/webhook-runtime/admission/v1beta1"
 )
 
-// PerconaXtraDBMutator implements the AdmissionHook interface to mutate the PerconaXtraDB resources
-type PerconaXtraDBMutator struct {
+// MariaDBMutator implements the AdmissionHook interface to mutate the MariaDB resources
+type MariaDBMutator struct {
 	client      kubernetes.Interface
 	dbClient    cs.Interface
 	lock        sync.RWMutex
 	initialized bool
 }
 
-var _ hookapi.AdmissionHook = &PerconaXtraDBMutator{}
+var _ hookapi.AdmissionHook = &MariaDBMutator{}
 
 // Resource is the resource to use for hosting mutating admission webhook.
-func (a *PerconaXtraDBMutator) Resource() (plural schema.GroupVersionResource, singular string) {
+func (a *MariaDBMutator) Resource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    kubedb.MutatorGroupName,
 			Version:  "v1alpha1",
-			Resource: api.ResourcePluralPerconaXtraDB,
+			Resource: api.ResourcePluralMariaDB,
 		},
-		api.ResourceSingularPerconaXtraDB
+		api.ResourceSingularMariaDB
 }
 
 // Initialize is called as a post-start hook
-func (a *PerconaXtraDBMutator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
+func (a *MariaDBMutator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -72,14 +72,14 @@ func (a *PerconaXtraDBMutator) Initialize(config *rest.Config, stopCh <-chan str
 
 // Admit is called to decide whether to accept the admission request.
 // The returned response may use the Patch field to mutate the object.
-func (a *PerconaXtraDBMutator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (a *MariaDBMutator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
 	status := &admission.AdmissionResponse{}
 
 	// N.B.: No Mutating for delete
 	if (req.Operation != admission.Create && req.Operation != admission.Update) ||
 		len(req.SubResource) != 0 ||
 		req.Kind.Group != api.SchemeGroupVersion.Group ||
-		req.Kind.Kind != api.ResourceKindPerconaXtraDB {
+		req.Kind.Kind != api.ResourceKindMariaDB {
 		status.Allowed = true
 		return status
 	}
@@ -93,11 +93,11 @@ func (a *PerconaXtraDBMutator) Admit(req *admission.AdmissionRequest) *admission
 	if err != nil {
 		return hookapi.StatusBadRequest(err)
 	}
-	perconaxtradbMod, err := setDefaultValues(obj.(*api.PerconaXtraDB).DeepCopy())
+	mariadbMod, err := setDefaultValues(obj.(*api.MariaDB).DeepCopy())
 	if err != nil {
 		return hookapi.StatusForbidden(err)
-	} else if perconaxtradbMod != nil {
-		patch, err := meta_util.CreateJSONPatch(req.Object.Raw, perconaxtradbMod)
+	} else if mariadbMod != nil {
+		patch, err := meta_util.CreateJSONPatch(req.Object.Raw, mariadbMod)
 		if err != nil {
 			return hookapi.StatusInternalServerError(err)
 		}
@@ -111,7 +111,7 @@ func (a *PerconaXtraDBMutator) Admit(req *admission.AdmissionRequest) *admission
 }
 
 // setDefaultValues provides the defaulting that is performed in mutating stage of creating/updating a MySQL database
-func setDefaultValues(db *api.PerconaXtraDB) (runtime.Object, error) {
+func setDefaultValues(db *api.MariaDB) (runtime.Object, error) {
 	if db.Spec.Version == "" {
 		return nil, errors.New(`'spec.version' is missing`)
 	}

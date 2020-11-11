@@ -29,9 +29,9 @@ import (
 func (f *Framework) EventuallyCRD() GomegaAsyncAssertion {
 	return Eventually(
 		func() error {
-			// Check PerconaXtraDB TPR
-			if _, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(core.NamespaceAll).List(context.TODO(), metav1.ListOptions{}); err != nil {
-				return errors.New("CRD PerconaXtraDB is not ready")
+			// Check MariaDB TPR
+			if _, err := f.dbClient.KubedbV1alpha2().MariaDBs(core.NamespaceAll).List(context.TODO(), metav1.ListOptions{}); err != nil {
+				return errors.New("CRD MariaDB is not ready")
 			}
 
 			// Check ProxySQL CRD

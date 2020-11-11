@@ -41,8 +41,8 @@ import (
 )
 
 var (
-	StashPerconaXtraDBBackupTask  = "percona-xtradb-backup-5.7"
-	StashPerconaXtraDBRestoreTask = "percona-xtradb-restore-5.7"
+	StashMariaDBBackupTask  = "mariadb-backup-5.7"
+	StashMariaDBRestoreTask = "mariadb-restore-5.7"
 )
 
 func (f *Framework) FoundStashCRDs() bool {
@@ -66,7 +66,7 @@ func (f *Invocation) BackupConfiguration(meta metav1.ObjectMeta) *stashv1beta1.B
 			},
 			BackupConfigurationTemplateSpec: stashv1beta1.BackupConfigurationTemplateSpec{
 				Task: stashv1beta1.TaskRef{
-					Name: StashPerconaXtraDBBackupTask,
+					Name: StashMariaDBBackupTask,
 				},
 				Target: &stashv1beta1.BackupTarget{
 					Ref: stashv1beta1.TargetRef{
@@ -148,7 +148,7 @@ func (f *Invocation) RestoreSessionForCluster(meta, oldMeta metav1.ObjectMeta, r
 			Namespace: f.namespace,
 			Labels: map[string]string{
 				"app":                 f.app,
-				api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+				api.LabelDatabaseKind: api.ResourceKindMariaDB,
 			},
 		},
 		Spec: stashv1beta1.RestoreSessionSpec{
@@ -157,7 +157,7 @@ func (f *Invocation) RestoreSessionForCluster(meta, oldMeta metav1.ObjectMeta, r
 			},
 			RestoreTargetSpec: stashv1beta1.RestoreTargetSpec{
 				Task: stashv1beta1.TaskRef{
-					Name: StashPerconaXtraDBRestoreTask,
+					Name: StashMariaDBRestoreTask,
 				},
 				Target: &stashv1beta1.RestoreTarget{
 					Replicas: replicas,
@@ -206,7 +206,7 @@ func (f *Invocation) RestoreSessionForStandalone(meta, oldMeta metav1.ObjectMeta
 			Namespace: f.namespace,
 			Labels: map[string]string{
 				"app":                 f.app,
-				api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+				api.LabelDatabaseKind: api.ResourceKindMariaDB,
 			},
 		},
 		Spec: stashv1beta1.RestoreSessionSpec{
@@ -215,7 +215,7 @@ func (f *Invocation) RestoreSessionForStandalone(meta, oldMeta metav1.ObjectMeta
 			},
 			RestoreTargetSpec: stashv1beta1.RestoreTargetSpec{
 				Task: stashv1beta1.TaskRef{
-					Name: StashPerconaXtraDBRestoreTask,
+					Name: StashMariaDBRestoreTask,
 				},
 				Target: &stashv1beta1.RestoreTarget{
 					Ref: stashv1beta1.TargetRef{

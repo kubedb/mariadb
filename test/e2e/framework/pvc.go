@@ -32,7 +32,7 @@ import (
 
 func (f *Framework) EventuallyPVCCount(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	labelMap := map[string]string{
-		api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+		api.LabelDatabaseKind: api.ResourceKindMariaDB,
 		api.LabelDatabaseName: meta.Name,
 	}
 	labelSelector := labels.SelectorFromSet(labelMap)

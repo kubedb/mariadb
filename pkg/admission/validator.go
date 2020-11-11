@@ -40,15 +40,15 @@ import (
 	hookapi "kmodules.xyz/webhook-runtime/admission/v1beta1"
 )
 
-// PerconaXtraDBValidator implements the AdmissionHook interface to validate the PerconaXtraDB resources
-type PerconaXtraDBValidator struct {
+// MariaDBValidator implements the AdmissionHook interface to validate the MariaDB resources
+type MariaDBValidator struct {
 	client      kubernetes.Interface
 	extClient   cs.Interface
 	lock        sync.RWMutex
 	initialized bool
 }
 
-var _ hookapi.AdmissionHook = &PerconaXtraDBValidator{}
+var _ hookapi.AdmissionHook = &MariaDBValidator{}
 
 var forbiddenEnvVars = []string{
 	"MYSQL_ROOT_PASSWORD",
@@ -58,17 +58,17 @@ var forbiddenEnvVars = []string{
 }
 
 // Resource is the resource to use for hosting validating admission webhook.
-func (a *PerconaXtraDBValidator) Resource() (plural schema.GroupVersionResource, singular string) {
+func (a *MariaDBValidator) Resource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    kubedb.ValidatorGroupName,
 			Version:  "v1alpha1",
-			Resource: api.ResourcePluralPerconaXtraDB,
+			Resource: api.ResourcePluralMariaDB,
 		},
-		api.ResourceSingularPerconaXtraDB
+		api.ResourceSingularMariaDB
 }
 
 // Initialize is called as a post-start hook
-func (a *PerconaXtraDBValidator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
+func (a *MariaDBValidator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -85,13 +85,13 @@ func (a *PerconaXtraDBValidator) Initialize(config *rest.Config, stopCh <-chan s
 }
 
 // Admit is called to decide whether to accept the admission request.
-func (a *PerconaXtraDBValidator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (a *MariaDBValidator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
 	status := &admission.AdmissionResponse{}
 
 	if (req.Operation != admission.Create && req.Operation != admission.Update && req.Operation != admission.Delete) ||
 		len(req.SubResource) != 0 ||
 		req.Kind.Group != api.SchemeGroupVersion.Group ||
-		req.Kind.Kind != api.ResourceKindPerconaXtraDB {
+		req.Kind.Kind != api.ResourceKindMariaDB {
 		status.Allowed = true
 		return status
 	}
@@ -106,11 +106,11 @@ func (a *PerconaXtraDBValidator) Admit(req *admission.AdmissionRequest) *admissi
 	case admission.Delete:
 		if req.Name != "" {
 			// req.Object.Raw = nil, so read from kubernetes
-			obj, err := a.extClient.KubedbV1alpha2().PerconaXtraDBs(req.Namespace).Get(context.TODO(), req.Name, metav1.GetOptions{})
+			obj, err := a.extClient.KubedbV1alpha2().MariaDBs(req.Namespace).Get(context.TODO(), req.Name, metav1.GetOptions{})
 			if err != nil && !kerr.IsNotFound(err) {
 				return hookapi.StatusInternalServerError(err)
 			} else if err == nil && obj.Spec.TerminationPolicy == api.TerminationPolicyDoNotTerminate {
-				return hookapi.StatusBadRequest(fmt.Errorf(`percona-xtradb "%v/%v" can't be paused. To delete, change spec.terminationPolicy`, req.Namespace, req.Name))
+				return hookapi.StatusBadRequest(fmt.Errorf(`mariadb "%v/%v" can't be paused. To delete, change spec.terminationPolicy`, req.Namespace, req.Name))
 			}
 		}
 	default:
@@ -125,8 +125,8 @@ func (a *PerconaXtraDBValidator) Admit(req *admission.AdmissionRequest) *admissi
 				return hookapi.StatusBadRequest(err)
 			}
 
-			px := obj.(*api.PerconaXtraDB).DeepCopy()
-			oldPXC := oldObject.(*api.PerconaXtraDB).DeepCopy()
+			px := obj.(*api.MariaDB).DeepCopy()
+			oldPXC := oldObject.(*api.MariaDB).DeepCopy()
 			oldPXC.SetDefaults()
 			// Allow changing Database Secret only if there was no secret have set up yet.
 			if oldPXC.Spec.AuthSecret == nil {
@@ -138,7 +138,7 @@ func (a *PerconaXtraDBValidator) Admit(req *admission.AdmissionRequest) *admissi
 			}
 		}
 		// validate database specs
-		if err = ValidatePerconaXtraDB(a.client, a.extClient, obj.(*api.PerconaXtraDB), false); err != nil {
+		if err = ValidateMariaDB(a.client, a.extClient, obj.(*api.MariaDB), false); err != nil {
 			return hookapi.StatusForbidden(err)
 		}
 	}
@@ -146,51 +146,51 @@ func (a *PerconaXtraDBValidator) Admit(req *admission.AdmissionRequest) *admissi
 	return status
 }
 
-// validateCluster checks whether the configurations for PerconaXtraDB Cluster are ok
-func validateCluster(db *api.PerconaXtraDB) error {
+// validateCluster checks whether the configurations for MariaDB Cluster are ok
+func validateCluster(db *api.MariaDB) error {
 	if db.IsCluster() {
 		clusterName := db.ClusterName()
-		if len(clusterName) > api.PerconaXtraDBMaxClusterNameLength {
+		if len(clusterName) > api.MariaDBMaxClusterNameLength {
 			return errors.Errorf(`'spec.px.clusterName' "%s" shouldn't have more than %d characters'`,
-				clusterName, api.PerconaXtraDBMaxClusterNameLength)
+				clusterName, api.MariaDBMaxClusterNameLength)
 		}
 		if db.Spec.Init != nil && db.Spec.Init.Script != nil {
-			return fmt.Errorf("`.spec.init.scriptSource` is not supported for cluster. For PerconaXtraDB cluster initialization see https://stash.run/docs/latest/addons/percona-xtradb/guides/5.7/clusterd/")
+			return fmt.Errorf("`.spec.init.scriptSource` is not supported for cluster. For MariaDB cluster initialization see https://stash.run/docs/latest/addons/mariadb/guides/5.7/clusterd/")
 		}
 	}
 
 	return nil
 }
 
-// ValidatePerconaXtraDB checks if the object satisfies all the requirements.
+// ValidateMariaDB checks if the object satisfies all the requirements.
 // It is not method of Interface, because it is referenced from controller package too.
-func ValidatePerconaXtraDB(client kubernetes.Interface, extClient cs.Interface, db *api.PerconaXtraDB, strictValidation bool) error {
+func ValidateMariaDB(client kubernetes.Interface, extClient cs.Interface, db *api.MariaDB, strictValidation bool) error {
 	if db.Spec.Version == "" {
 		return errors.New(`'spec.version' is missing`)
 	}
 
 	if db.Spec.Replicas == nil {
-		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be 1 for standalone percona-xtradb server, but for percona-xtradb cluster, value must be greater than 0`,
+		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be 1 for standalone mariadb server, but for mariadb cluster, value must be greater than 0`,
 			*db.Spec.Replicas)
 	}
 
-	if pxVersion, err := extClient.CatalogV1alpha1().PerconaXtraDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{}); err != nil {
+	if dbVersion, err := extClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{}); err != nil {
 		return err
-	} else if db.IsCluster() && pxVersion.Spec.Version != api.PerconaXtraDBClusterRecommendedVersion {
+	} else if db.IsCluster() && dbVersion.Spec.Version != api.MariaDBClusterRecommendedVersion {
 		return errors.Errorf("unsupported version for xtradb cluster, recommended version is %s",
-			api.PerconaXtraDBClusterRecommendedVersion)
+			api.MariaDBClusterRecommendedVersion)
 	}
 
-	if db.IsCluster() && *db.Spec.Replicas < api.PerconaXtraDBDefaultClusterSize {
+	if db.IsCluster() && *db.Spec.Replicas < api.MariaDBDefaultClusterSize {
 		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be %d for xtradb cluster`,
-			db.Spec.Replicas, api.PerconaXtraDBDefaultClusterSize)
+			db.Spec.Replicas, api.MariaDBDefaultClusterSize)
 	}
 
 	if err := validateCluster(db); err != nil {
 		return err
 	}
 
-	if err := amv.ValidateEnvVar(db.Spec.PodTemplate.Spec.Env, forbiddenEnvVars, api.ResourceKindPerconaXtraDB); err != nil {
+	if err := amv.ValidateEnvVar(db.Spec.PodTemplate.Spec.Env, forbiddenEnvVars, api.ResourceKindMariaDB); err != nil {
 		return err
 	}
 
@@ -213,20 +213,20 @@ func ValidatePerconaXtraDB(client kubernetes.Interface, extClient cs.Interface, 
 			}
 		}
 
-		// Check if percona-xtradb Version is deprecated.
+		// Check if mariadb Version is deprecated.
 		// If deprecated, return error
-		pxVersion, err := extClient.CatalogV1alpha1().PerconaXtraDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
+		dbVersion, err := extClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 
-		if pxVersion.Spec.Deprecated {
-			return fmt.Errorf("percona-xtradb %s/%s is using deprecated version %v. Skipped processing", db.Namespace, db.Name, pxVersion.Name)
+		if dbVersion.Spec.Deprecated {
+			return fmt.Errorf("mariadb %s/%s is using deprecated version %v. Skipped processing", db.Namespace, db.Name, dbVersion.Name)
 		}
 
-		if err := pxVersion.ValidateSpecs(); err != nil {
-			return fmt.Errorf("perconaXtraDBVersion %s/%s is using invalid perconaXtraDBVersion %v. Skipped processing. reason: %v", pxVersion.Namespace,
-				pxVersion.Name, pxVersion.Name, err)
+		if err := dbVersion.ValidateSpecs(); err != nil {
+			return fmt.Errorf("mariadbVersion %s/%s is using invalid mariadbVersion %v. Skipped processing. reason: %v", dbVersion.Namespace,
+				dbVersion.Name, dbVersion.Name, err)
 		}
 	}
 
@@ -248,7 +248,7 @@ func ValidatePerconaXtraDB(client kubernetes.Interface, extClient cs.Interface, 
 	return nil
 }
 
-func validateUpdate(obj, oldObj *api.PerconaXtraDB) error {
+func validateUpdate(obj, oldObj *api.MariaDB) error {
 	preconditions := getPreconditionFunc(oldObj)
 	_, err := meta_util.CreateStrategicPatch(oldObj, obj, preconditions...)
 	if err != nil {
@@ -260,19 +260,17 @@ func validateUpdate(obj, oldObj *api.PerconaXtraDB) error {
 	return nil
 }
 
-func getPreconditionFunc(db *api.PerconaXtraDB) []mergepatch.PreconditionFunc {
+func getPreconditionFunc(db *api.MariaDB) []mergepatch.PreconditionFunc {
 	preconditions := []mergepatch.PreconditionFunc{
 		mergepatch.RequireKeyUnchanged("apiVersion"),
 		mergepatch.RequireKeyUnchanged("kind"),
 		mergepatch.RequireMetadataKeyUnchanged("name"),
 		mergepatch.RequireMetadataKeyUnchanged("namespace"),
 	}
-
 	// Once the database has been initialized, don't let update the "spec.init" section
 	if db.Spec.Init != nil && db.Spec.Init.Initialized {
 		preconditionSpecFields.Insert("spec.init")
 	}
-
 	for _, field := range preconditionSpecFields.List() {
 		preconditions = append(preconditions,
 			meta_util.RequireChainKeyUnchanged(field),
@@ -284,7 +282,7 @@ func getPreconditionFunc(db *api.PerconaXtraDB) []mergepatch.PreconditionFunc {
 var preconditionSpecFields = sets.NewString(
 	"spec.storageType",
 	"spec.storage",
-	"spec.databaseSecret",
+	"spec.authSecret",
 	"spec.podTemplate.spec.nodeSelector",
 )
 

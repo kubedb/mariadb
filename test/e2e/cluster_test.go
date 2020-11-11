@@ -23,7 +23,7 @@ import (
 	"strconv"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
-	"kubedb.dev/percona-xtradb/test/e2e/framework"
+	"kubedb.dev/mariadb/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,7 +38,7 @@ import (
 	stashV1beta1 "stash.appscode.dev/apimachinery/apis/stash/v1beta1"
 )
 
-var _ = Describe("PerconaXtraDB cluster Tests", func() {
+var _ = Describe("MariaDB cluster Tests", func() {
 	const (
 		googleProjectIDKey          = "GOOGLE_PROJECT_ID"
 		googleServiceAccountJsonKey = "GOOGLE_SERVICE_ACCOUNT_JSON_KEY"
@@ -46,14 +46,14 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 	)
 
 	var (
-		err                  error
-		f                    *framework.Invocation
-		px                   *api.PerconaXtraDB
-		garbagePerconaXtraDB *api.PerconaXtraDBList
-		dbName               string
-		dbNameKubedb         string
-		wsClusterStats       map[string]string
-		secret               *corev1.Secret
+		err            error
+		f              *framework.Invocation
+		px             *api.MariaDB
+		garbageMariaDB *api.MariaDBList
+		dbName         string
+		dbNameKubedb   string
+		wsClusterStats map[string]string
+		secret         *corev1.Secret
 	)
 
 	var isSetEnv = func(key string) bool {
@@ -62,13 +62,13 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 		return set
 	}
 
-	var createAndWaitForRunningPerconaXtraDB = func() {
-		By("Create PerconaXtraDB: " + px.Name)
-		err = f.CreatePerconaXtraDB(px)
+	var createAndWaitForRunningMariaDB = func() {
+		By("Create MariaDB: " + px.Name)
+		err = f.CreateMariaDB(px)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for Running PerconaXtraDB")
-		f.EventuallyPerconaXtraDBReady(px.ObjectMeta).Should(BeTrue())
+		By("Wait for Running MariaDB")
+		f.EventuallyMariaDBReady(px.ObjectMeta).Should(BeTrue())
 
 		By("Wait for AppBinding to create")
 		f.EventuallyAppBinding(px.ObjectMeta).Should(BeTrue())
@@ -81,49 +81,49 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 		f.EventuallyDatabaseReady(px.ObjectMeta, dbName, 0).Should(BeTrue())
 	}
 
-	var deletePerconaXtraDBResource = func() {
+	var deleteMariaDBResource = func() {
 		if px == nil {
-			log.Infoln("Skipping cleanup. Reason: PerconaXtraDB object is nil")
+			log.Infoln("Skipping cleanup. Reason: MariaDB object is nil")
 			return
 		}
 
-		By("Check if perconaxtradb " + px.Name + " exists.")
-		perconaxtradb, err := f.GetPerconaXtraDB(px.ObjectMeta)
+		By("Check if mariadb " + px.Name + " exists.")
+		mariadb, err := f.GetMariaDB(px.ObjectMeta)
 		if err != nil && kerr.IsNotFound(err) {
-			// PerconaXtraDB was not created. Hence, rest of cleanup is not necessary.
+			// MariaDB was not created. Hence, rest of cleanup is not necessary.
 			return
 		}
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Update perconaxtradb to set spec.terminationPolicy = WipeOut")
-		_, err = f.PatchPerconaXtraDB(px.ObjectMeta, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+		By("Update mariadb to set spec.terminationPolicy = WipeOut")
+		_, err = f.PatchMariaDB(px.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
 			in.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
 			return in
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Delete perconaxtradb")
-		err = f.DeletePerconaXtraDB(perconaxtradb.ObjectMeta)
+		By("Delete mariadb")
+		err = f.DeleteMariaDB(mariadb.ObjectMeta)
 		if err != nil && kerr.IsNotFound(err) {
-			// PerconaXtraDB was not created. Hence, rest of cleanup is not necessary.
+			// MariaDB was not created. Hence, rest of cleanup is not necessary.
 			return
 		}
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Wait for perconaxtradb to be deleted")
-		f.EventuallyPerconaXtraDB(perconaxtradb.ObjectMeta).Should(BeFalse())
+		By("Wait for mariadb to be deleted")
+		f.EventuallyMariaDB(mariadb.ObjectMeta).Should(BeFalse())
 
-		By("Wait for perconaxtradb resources to be wipedOut")
-		f.EventuallyWipedOut(perconaxtradb.ObjectMeta).Should(Succeed())
+		By("Wait for mariadb resources to be wipedOut")
+		f.EventuallyWipedOut(mariadb.ObjectMeta).Should(Succeed())
 	}
 
 	var deleteTestResource = func() {
-		deletePerconaXtraDBResource()
+		deleteMariaDBResource()
 	}
 
 	var deleteLeftOverStuffs = func() {
-		// old PerconaXtraDB are in garbagePerconaXtraDB list. delete their resources.
-		for _, p := range garbagePerconaXtraDB.Items {
+		// old MariaDB are in garbageMariaDB list. delete their resources.
+		for _, p := range garbageMariaDB.Items {
 			*px = p
 			deleteTestResource()
 		}
@@ -195,8 +195,8 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 
 	BeforeEach(func() {
 		f = root.Invoke()
-		px = f.PerconaXtraDBCluster()
-		garbagePerconaXtraDB = new(api.PerconaXtraDBList)
+		px = f.MariaDBCluster()
+		garbageMariaDB = new(api.MariaDBList)
 		dbName = "mysql"
 		dbNameKubedb = "kubedb"
 
@@ -212,48 +212,48 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 	Context("Behaviour tests", func() {
 
 		AfterEach(func() {
-			// delete resources for current PerconaXtraDB
+			// delete resources for current MariaDB
 			deleteTestResource()
 			deleteLeftOverStuffs()
 		})
 
 		Context("Basic Cluster with 3 member", func() {
 			BeforeEach(func() {
-				createAndWaitForRunningPerconaXtraDB()
+				createAndWaitForRunningMariaDB()
 				storeWsClusterStats()
 			})
 
 			It("should be possible to create a basic 3 member cluster", func() {
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize; i++ {
 					By(fmt.Sprintf("Checking the cluster stats from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
 
-				replicationCheck(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize)
+				replicationCheck(px.ObjectMeta, api.MariaDBDefaultClusterSize)
 			})
 		})
 
 		Context("Failover", func() {
 			BeforeEach(func() {
-				createAndWaitForRunningPerconaXtraDB()
+				createAndWaitForRunningMariaDB()
 				storeWsClusterStats()
 			})
 
 			It("should failover successfully", func() {
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize; i++ {
 					By(fmt.Sprintf("Checking the cluster stats from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
-				replicationCheck(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize)
+				replicationCheck(px.ObjectMeta, api.MariaDBDefaultClusterSize)
 
 				By(fmt.Sprintf("Taking down the primary '%s-%d'", px.Name, 0))
 				err = f.RemoverPrimary(px.ObjectMeta, 0)
 				Expect(err).NotTo(HaveOccurred())
 
 				By(fmt.Sprintf("Checking status after failing primary '%s-%d'", px.Name, 0))
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize; i++ {
 					By(fmt.Sprintf("Checking the cluster stats member count from Pod '%s-%d'", px.Name, i))
 					storeWsClusterStats()
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
@@ -261,33 +261,33 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 				}
 
 				By("Checking for data after failover")
-				readFromEachPrimary(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize, 3)
+				readFromEachPrimary(px.ObjectMeta, api.MariaDBDefaultClusterSize, 3)
 			})
 		})
 
 		Context("Scale up", func() {
 			BeforeEach(func() {
-				createAndWaitForRunningPerconaXtraDB()
+				createAndWaitForRunningMariaDB()
 				storeWsClusterStats()
 			})
 
 			It("should be possible to scale up", func() {
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize; i++ {
 					By(fmt.Sprintf("Checking the cluster stats from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
-				replicationCheck(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize)
+				replicationCheck(px.ObjectMeta, api.MariaDBDefaultClusterSize)
 
 				By("Scaling up")
-				px, err = f.PatchPerconaXtraDB(px.ObjectMeta, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
-					in.Spec.Replicas = pointer.Int32P(api.PerconaXtraDBDefaultClusterSize + 1)
+				px, err = f.PatchMariaDB(px.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
+					in.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize + 1)
 
 					return in
 				})
 				Expect(err).NotTo(HaveOccurred())
-				By("Wait for PerconaXtraDB be patched")
-				Expect(f.WaitUntilPerconaXtraDBReplicasBePatched(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize+1)).
+				By("Wait for MariaDB be patched")
+				Expect(f.WaitUntilMariaDBReplicasBePatched(px.ObjectMeta, api.MariaDBDefaultClusterSize+1)).
 					NotTo(HaveOccurred())
 
 				By("Wait for new member to be ready")
@@ -297,15 +297,15 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 
 				By("Checking status after scaling up")
 				storeWsClusterStats()
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize+1; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize+1; i++ {
 					By(fmt.Sprintf("Checking the cluster stats member count from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
 
 				By("Checking for data after scaling up")
-				readFromEachPrimary(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize+1, 3)
-				writeTo_N_ReadFrom_EachPrimary(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize+1, 3)
+				readFromEachPrimary(px.ObjectMeta, api.MariaDBDefaultClusterSize+1, 3)
+				writeTo_N_ReadFrom_EachPrimary(px.ObjectMeta, api.MariaDBDefaultClusterSize+1, 3)
 			})
 		})
 
@@ -313,27 +313,27 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 			BeforeEach(func() {
 				px.Spec.Replicas = pointer.Int32P(4)
 
-				createAndWaitForRunningPerconaXtraDB()
+				createAndWaitForRunningMariaDB()
 				storeWsClusterStats()
 			})
 
 			It("Should be possible to scale down", func() {
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize+1; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize+1; i++ {
 					By(fmt.Sprintf("Checking the cluster stats from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
-				replicationCheck(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize+1)
+				replicationCheck(px.ObjectMeta, api.MariaDBDefaultClusterSize+1)
 
 				By("Scaling down")
-				px, err = f.PatchPerconaXtraDB(px.ObjectMeta, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
-					in.Spec.Replicas = pointer.Int32P(api.PerconaXtraDBDefaultClusterSize)
+				px, err = f.PatchMariaDB(px.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
+					in.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 
 					return in
 				})
 				Expect(err).NotTo(HaveOccurred())
-				By("Wait for PerconaXtraDB be patched")
-				Expect(f.WaitUntilPerconaXtraDBReplicasBePatched(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize)).
+				By("Wait for MariaDB be patched")
+				Expect(f.WaitUntilMariaDBReplicasBePatched(px.ObjectMeta, api.MariaDBDefaultClusterSize)).
 					NotTo(HaveOccurred())
 
 				By("Wait for new member to be ready")
@@ -343,15 +343,15 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 
 				By("Checking status after scaling down")
 				storeWsClusterStats()
-				for i := 0; i < api.PerconaXtraDBDefaultClusterSize; i++ {
+				for i := 0; i < api.MariaDBDefaultClusterSize; i++ {
 					By(fmt.Sprintf("Checking the cluster stats member count from Pod '%s-%d'", px.Name, i))
 					f.EventuallyCheckCluster(px.ObjectMeta, dbName, i, wsClusterStats).
 						Should(Equal(true))
 				}
 
 				By("Checking for data after scaling down")
-				readFromEachPrimary(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize, 4)
-				writeTo_N_ReadFrom_EachPrimary(px.ObjectMeta, api.PerconaXtraDBDefaultClusterSize, 4)
+				readFromEachPrimary(px.ObjectMeta, api.MariaDBDefaultClusterSize, 4)
+				writeTo_N_ReadFrom_EachPrimary(px.ObjectMeta, api.MariaDBDefaultClusterSize, 4)
 			})
 		})
 	})
@@ -360,7 +360,7 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 		// To run this test,
 		// 1st: Deploy stash latest operator
 		// 2nd: create mysql related tasks and functions either
-		//	 or	from helm chart in `stash.appscode.dev/percona-xtradb/chart/stash-percona-xtradb`
+		//	 or	from helm chart in `stash.appscode.dev/mariadb/chart/stash-mariadb`
 		Context("With Stash/Restic", func() {
 			var bc *stashV1beta1.BackupConfiguration
 			var bs *stashV1beta1.BackupSession
@@ -400,17 +400,17 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 			})
 
 			var createAndWaitForInitializing = func() {
-				By("Creating PerconaXtraDB: " + px.Name)
-				err = f.CreatePerconaXtraDB(px)
+				By("Creating MariaDB: " + px.Name)
+				err = f.CreateMariaDB(px)
 				Expect(err).NotTo(HaveOccurred())
 
-				By("Wait for restoring perconaxtradb")
-				f.EventuallyPerconaXtraDBPhase(px.ObjectMeta).Should(Equal(api.DatabasePhaseDataRestoring))
+				By("Wait for restoring mariadb")
+				f.EventuallyMariaDBPhase(px.ObjectMeta).Should(Equal(api.DatabasePhaseDataRestoring))
 			}
 
 			var shouldInitializeFromStash = func() {
 				// Create and wait for running MySQL
-				createAndWaitForRunningPerconaXtraDB()
+				createAndWaitForRunningMariaDB()
 
 				create_Database_N_Table(px.ObjectMeta, 0)
 				insertRows(px.ObjectMeta, 0, 3)
@@ -435,15 +435,15 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 				By("Check for Succeeded backupsession")
 				f.EventuallyBackupSessionPhase(bs.ObjectMeta).Should(Equal(stashV1beta1.BackupSessionSucceeded))
 
-				oldPerconaXtraDB, err := f.GetPerconaXtraDB(px.ObjectMeta)
+				oldMariaDB, err := f.GetMariaDB(px.ObjectMeta)
 				Expect(err).NotTo(HaveOccurred())
 
-				garbagePerconaXtraDB.Items = append(garbagePerconaXtraDB.Items, *oldPerconaXtraDB)
+				garbageMariaDB.Items = append(garbageMariaDB.Items, *oldMariaDB)
 
-				By("Create PerconaXtraDB for initializing from stash")
-				*px = *f.PerconaXtraDBCluster()
-				rs = f.RestoreSessionForCluster(px.ObjectMeta, oldPerconaXtraDB.ObjectMeta, oldPerconaXtraDB.Spec.Replicas)
-				px.Spec.AuthSecret = oldPerconaXtraDB.Spec.AuthSecret
+				By("Create MariaDB for initializing from stash")
+				*px = *f.MariaDBCluster()
+				rs = f.RestoreSessionForCluster(px.ObjectMeta, oldMariaDB.ObjectMeta, oldMariaDB.Spec.Replicas)
+				px.Spec.AuthSecret = oldMariaDB.Spec.AuthSecret
 				px.Spec.Init = &api.InitSpec{
 					WaitForInitialRestore: true,
 				}
@@ -460,7 +460,7 @@ var _ = Describe("PerconaXtraDB cluster Tests", func() {
 				f.EventuallyRestoreSessionPhase(rs.ObjectMeta).Should(Equal(stashV1beta1.RestoreSucceeded))
 
 				By("Wait for Running mysql")
-				f.EventuallyPerconaXtraDBReady(px.ObjectMeta).Should(BeTrue())
+				f.EventuallyMariaDBReady(px.ObjectMeta).Should(BeTrue())
 
 				By("Wait for AppBinding to create")
 				f.EventuallyAppBinding(px.ObjectMeta).Should(BeTrue())

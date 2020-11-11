@@ -36,7 +36,7 @@ import (
 
 func NewRootCmd(version string) *cobra.Command {
 	var rootCmd = &cobra.Command{
-		Use:               "percona-xtradb-operator",
+		Use:               "mariadb-operator",
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(c *cobra.Command, args []string) {
 			flags.DumpAll(c.Flags())

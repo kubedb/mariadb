@@ -1,9 +1,9 @@
-[![Go Report Card](https://goreportcard.com/badge/kubedb.dev/percona-xtradb)](https://goreportcard.com/report/kubedb.dev/percona-xtradb)
-![CI](https://github.com/kubedb/percona-xtradb/workflows/CI/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/kubedb.dev/mariadb)](https://goreportcard.com/report/kubedb.dev/mariadb)
+![CI](https://github.com/kubedb/mariadb/workflows/CI/badge.svg)
 [![Slack](http://slack.kubernetes.io/badge.svg)](http://slack.kubernetes.io/#kubedb)
 [![Twitter](https://img.shields.io/twitter/follow/kubedb.svg?style=social&logo=twitter&label=Follow)](https://twitter.com/intent/follow?screen_name=kubedb)
 
-# percona-xtradb
+# mariadb
 
 Run Percona XtraDB in Kubernetes
 

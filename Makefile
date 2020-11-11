@@ -20,7 +20,7 @@ ENFORCE_LICENSE    ?=
 
 GO_PKG   := kubedb.dev
 REPO     := $(notdir $(shell pwd))
-BIN      := percona-xtradb-operator
+BIN      := mariadb-operator
 COMPRESS ?= no
 
 # Where to push the docker image.
@@ -357,12 +357,12 @@ install:
 		--namespace=$(KUBE_NAMESPACE)                     \
 		--set-file license=$(LICENSE_FILE)                \
 		--set operator.registry=$(REGISTRY)               \
-		--set operator.repository=percona-xtradb-operator \
+		--set operator.repository=mariadb-operator \
 		--set operator.tag=$(TAG)                         \
 		--set imagePullPolicy=$(IMAGE_PULL_POLICY)		  \
 		$(IMAGE_PULL_SECRETS);                            \
 	kubectl wait --for=condition=Available apiservice -l 'app.kubernetes.io/name=kubedb,app.kubernetes.io/instance=kubedb' --timeout=5m; \
-	until kubectl get crds perconaxtradbversions.catalog.kubedb.com -o=jsonpath='{.items[0].metadata.name}' &> /dev/null; do sleep 1; done; \
+	until kubectl get crds mariadbversions.catalog.kubedb.com -o=jsonpath='{.items[0].metadata.name}' &> /dev/null; do sleep 1; done; \
 	kubectl wait --for=condition=Established crds -l app.kubernetes.io/name=kubedb --timeout=5m; \
 	helm install kubedb-catalog charts/kubedb-catalog     \
 		--namespace=$(KUBE_NAMESPACE)                     \
@@ -371,7 +371,7 @@ install:
 		--set catalog.memcached=false                     \
 		--set catalog.mongo=false                         \
 		--set catalog.mysql=false                         \
-		--set catalog.perconaxtradb=true                  \
+		--set catalog.mariadb=true                  \
 		--set catalog.pgbouncer=false                     \
 		--set catalog.postgres=false                      \
 		--set catalog.proxysql=false                      \

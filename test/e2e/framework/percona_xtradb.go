@@ -41,16 +41,16 @@ var (
 	DBPvcStorageSize  = "50Mi"
 )
 
-func (f *Invocation) PerconaXtraDB() *api.PerconaXtraDB {
-	return &api.PerconaXtraDB{
+func (f *Invocation) MariaDB() *api.MariaDB {
+	return &api.MariaDB{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      rand.WithUniqSuffix("percona-xtradb"),
+			Name:      rand.WithUniqSuffix("mariadb"),
 			Namespace: f.namespace,
 			Labels: map[string]string{
 				"app": f.app,
 			},
 		},
-		Spec: api.PerconaXtraDBSpec{
+		Spec: api.MariaDBSpec{
 			Replicas:    pointer.Int32P(1),
 			Version:     DBCatalogName,
 			StorageType: api.StorageTypeDurable,
@@ -67,39 +67,39 @@ func (f *Invocation) PerconaXtraDB() *api.PerconaXtraDB {
 	}
 }
 
-func (f *Invocation) PerconaXtraDBCluster() *api.PerconaXtraDB {
-	perconaxtradb := f.PerconaXtraDB()
-	perconaxtradb.Spec.Replicas = pointer.Int32P(api.PerconaXtraDBDefaultClusterSize)
+func (f *Invocation) MariaDBCluster() *api.MariaDB {
+	mariadb := f.MariaDB()
+	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 
-	return perconaxtradb
+	return mariadb
 }
 
-func (f *Framework) CreatePerconaXtraDB(obj *api.PerconaXtraDB) error {
-	_, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
+func (f *Framework) CreateMariaDB(obj *api.MariaDB) error {
+	_, err := f.dbClient.KubedbV1alpha2().MariaDBs(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 	return err
 }
 
-func (f *Framework) GetPerconaXtraDB(meta metav1.ObjectMeta) (*api.PerconaXtraDB, error) {
-	return f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
+func (f *Framework) GetMariaDB(meta metav1.ObjectMeta) (*api.MariaDB, error) {
+	return f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
 }
 
-func (f *Framework) PatchPerconaXtraDB(meta metav1.ObjectMeta, transform func(*api.PerconaXtraDB) *api.PerconaXtraDB) (*api.PerconaXtraDB, error) {
-	px, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
+func (f *Framework) PatchMariaDB(meta metav1.ObjectMeta, transform func(*api.MariaDB) *api.MariaDB) (*api.MariaDB, error) {
+	px, err := f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	px, _, err = util.PatchPerconaXtraDB(context.TODO(), f.dbClient.KubedbV1alpha2(), px, transform, metav1.PatchOptions{})
+	px, _, err = util.PatchMariaDB(context.TODO(), f.dbClient.KubedbV1alpha2(), px, transform, metav1.PatchOptions{})
 	return px, err
 }
 
-func (f *Framework) DeletePerconaXtraDB(meta metav1.ObjectMeta) error {
-	return f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Delete(context.TODO(), meta.Name, metav1.DeleteOptions{})
+func (f *Framework) DeleteMariaDB(meta metav1.ObjectMeta) error {
+	return f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Delete(context.TODO(), meta.Name, metav1.DeleteOptions{})
 }
 
-func (f *Framework) EventuallyPerconaXtraDB(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+func (f *Framework) EventuallyMariaDB(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	return Eventually(
 		func() bool {
-			_, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
+			_, err := f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
 			if err != nil {
 				if kerr.IsNotFound(err) {
 					return false
@@ -113,10 +113,10 @@ func (f *Framework) EventuallyPerconaXtraDB(meta metav1.ObjectMeta) GomegaAsyncA
 	)
 }
 
-func (f *Framework) EventuallyPerconaXtraDBPhase(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+func (f *Framework) EventuallyMariaDBPhase(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	return Eventually(
 		func() api.DatabasePhase {
-			db, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
+			db, err := f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			return db.Status.Phase
 		},
@@ -125,10 +125,10 @@ func (f *Framework) EventuallyPerconaXtraDBPhase(meta metav1.ObjectMeta) GomegaA
 	)
 }
 
-func (f *Framework) EventuallyPerconaXtraDBReady(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+func (f *Framework) EventuallyMariaDBReady(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	return Eventually(
 		func() bool {
-			px, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
+			px, err := f.dbClient.KubedbV1alpha2().MariaDBs(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			return px.Status.Phase == api.DatabasePhaseReady
 		},
@@ -137,28 +137,28 @@ func (f *Framework) EventuallyPerconaXtraDBReady(meta metav1.ObjectMeta) GomegaA
 	)
 }
 
-func (f *Framework) CleanPerconaXtraDB() {
-	pxList, err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(f.namespace).List(context.TODO(), metav1.ListOptions{})
+func (f *Framework) CleanMariaDB() {
+	pxList, err := f.dbClient.KubedbV1alpha2().MariaDBs(f.namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return
 	}
 	for _, px := range pxList.Items {
-		if _, _, err := util.PatchPerconaXtraDB(context.TODO(), f.dbClient.KubedbV1alpha2(), &px, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+		if _, _, err := util.PatchMariaDB(context.TODO(), f.dbClient.KubedbV1alpha2(), &px, func(in *api.MariaDB) *api.MariaDB {
 			in.ObjectMeta.Finalizers = nil
 			in.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
 			return in
 		}, metav1.PatchOptions{}); err != nil {
-			fmt.Printf("error Patching PerconaXtraDB. error: %v", err)
+			fmt.Printf("error Patching MariaDB. error: %v", err)
 		}
 	}
-	if err := f.dbClient.KubedbV1alpha2().PerconaXtraDBs(f.namespace).DeleteCollection(context.TODO(), meta_util.DeleteInForeground(), metav1.ListOptions{}); err != nil {
-		fmt.Printf("error in deletion of PerconaXtraDB. Error: %v", err)
+	if err := f.dbClient.KubedbV1alpha2().MariaDBs(f.namespace).DeleteCollection(context.TODO(), meta_util.DeleteInForeground(), metav1.ListOptions{}); err != nil {
+		fmt.Printf("error in deletion of MariaDB. Error: %v", err)
 	}
 }
 
-func (f *Framework) WaitUntilPerconaXtraDBReplicasBePatched(meta metav1.ObjectMeta, count int32) error {
+func (f *Framework) WaitUntilMariaDBReplicasBePatched(meta metav1.ObjectMeta, count int32) error {
 	return wait.PollImmediate(kutil.RetryInterval, kutil.ReadinessTimeout, func() (bool, error) {
-		px, err := f.GetPerconaXtraDB(meta)
+		px, err := f.GetMariaDB(meta)
 		if err != nil {
 			return false, nil
 		}

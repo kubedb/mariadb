@@ -47,10 +47,10 @@ type workloadOptions struct {
 	// db container options
 	conatainerName string
 	image          string
-	cmd            []string // cmd of `percona-xtradb` container
-	args           []string // args of `percona-xtradb` container
+	cmd            []string // cmd of `mariadb` container
+	args           []string // args of `mariadb` container
 	ports          []core.ContainerPort
-	envList        []core.EnvVar // envList of `percona-xtradb` container
+	envList        []core.EnvVar // envList of `mariadb` container
 	volumeMount    []core.VolumeMount
 	configSecret   *core.LocalObjectReference
 
@@ -66,8 +66,8 @@ type workloadOptions struct {
 	volume         []core.Volume // volumes to mount on stsPodTemplate
 }
 
-func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType, error) {
-	pxVersion, err := c.DBClient.CatalogV1alpha1().PerconaXtraDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
+func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
+	dbVersion, err := c.DBClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 	if err != nil {
 		return kutil.VerbUnchanged, err
 	}
@@ -75,7 +75,7 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 	initContainers := []core.Container{
 		{
 			Name:            "remove-lost-found",
-			Image:           pxVersion.Spec.InitContainer.Image,
+			Image:           dbVersion.Spec.InitContainer.Image,
 			ImagePullPolicy: core.PullIfNotPresent,
 			Command: []string{
 				"rm",
@@ -85,7 +85,7 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 			VolumeMounts: []core.VolumeMount{
 				{
 					Name:      "data",
-					MountPath: api.PerconaXtraDBDataMountPath,
+					MountPath: api.MariaDBDataMountPath,
 				},
 			},
 			Resources: db.Spec.PodTemplate.Spec.Resources,
@@ -131,7 +131,7 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 		})
 		volumeMounts = append(volumeMounts, core.VolumeMount{
 			Name:      "initial-script",
-			MountPath: api.PerconaXtraDBInitDBMountPath,
+			MountPath: api.MariaDBInitDBMountPath,
 		})
 	}
 	db.Spec.PodTemplate.Spec.ServiceAccountName = db.OffshootName()
@@ -159,7 +159,7 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 						/bin/mysqld_exporter --web.listen-address=:%v --web.telemetry-path=%v %v`,
 					db.Spec.Monitor.Prometheus.Exporter.Port, db.StatsService().Path(), strings.Join(db.Spec.Monitor.Prometheus.Exporter.Args, " ")),
 			},
-			Image: pxVersion.Spec.Exporter.Image,
+			Image: dbVersion.Spec.Exporter.Image,
 			Ports: []core.ContainerPort{
 				{
 					Name:          mona.PrometheusExporterPortName,
@@ -177,8 +177,8 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 		stsName:          db.OffshootName(),
 		labels:           db.OffshootLabels(),
 		selectors:        db.OffshootSelectors(),
-		conatainerName:   api.ResourceSingularPerconaXtraDB,
-		image:            pxVersion.Spec.DB.Image,
+		conatainerName:   api.ResourceSingularMariaDB,
+		image:            dbVersion.Spec.DB.Image,
 		args:             args,
 		cmd:              cmds,
 		ports:            ports,
@@ -197,8 +197,8 @@ func (c *Controller) ensurePerconaXtraDB(db *api.PerconaXtraDB) (kutil.VerbType,
 	return c.ensureStatefulSet(db, opts)
 }
 
-func (c *Controller) checkStatefulSet(db *api.PerconaXtraDB, stsName string) error {
-	// StatefulSet for PerconaXtraDB database
+func (c *Controller) checkStatefulSet(db *api.MariaDB, stsName string) error {
+	// StatefulSet for MariaDB database
 	statefulSet, err := c.Client.AppsV1().StatefulSets(db.Namespace).Get(context.TODO(), stsName, metav1.GetOptions{})
 	if err != nil {
 		if kerr.IsNotFound(err) {
@@ -207,7 +207,7 @@ func (c *Controller) checkStatefulSet(db *api.PerconaXtraDB, stsName string) err
 		return err
 	}
 
-	if statefulSet.Labels[api.LabelDatabaseKind] != api.ResourceKindPerconaXtraDB ||
+	if statefulSet.Labels[api.LabelDatabaseKind] != api.ResourceKindMariaDB ||
 		statefulSet.Labels[api.LabelDatabaseName] != db.Name {
 		return fmt.Errorf(`intended statefulSet "%v/%v" already exists`, db.Namespace, stsName)
 	}
@@ -218,13 +218,13 @@ func (c *Controller) checkStatefulSet(db *api.PerconaXtraDB, stsName string) err
 func upsertCustomConfig(
 	template core.PodTemplateSpec, configSecret *core.LocalObjectReference, replicas int32) core.PodTemplateSpec {
 	for i, container := range template.Spec.Containers {
-		if container.Name == api.ResourceSingularPerconaXtraDB {
+		if container.Name == api.ResourceSingularMariaDB {
 			configVolumeMount := core.VolumeMount{
 				Name:      "custom-config",
-				MountPath: api.PerconaXtraDBCustomConfigMountPath,
+				MountPath: api.MariaDBCustomConfigMountPath,
 			}
 			if replicas > 1 {
-				configVolumeMount.MountPath = api.PerconaXtraDBClusterCustomConfigMountPath
+				configVolumeMount.MountPath = api.MariaDBClusterCustomConfigMountPath
 			}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, configVolumeMount)
@@ -249,7 +249,7 @@ func upsertCustomConfig(
 	return template
 }
 
-func (c *Controller) ensureStatefulSet(db *api.PerconaXtraDB, opts workloadOptions) (kutil.VerbType, error) {
+func (c *Controller) ensureStatefulSet(db *api.MariaDB, opts workloadOptions) (kutil.VerbType, error) {
 	// Take value of podTemplate
 	var pt ofst.PodTemplateSpec
 	if opts.podTemplate != nil {
@@ -259,13 +259,13 @@ func (c *Controller) ensureStatefulSet(db *api.PerconaXtraDB, opts workloadOptio
 		return kutil.VerbUnchanged, err
 	}
 
-	// Create statefulSet for PerconaXtraDB database
+	// Create statefulSet for MariaDB database
 	statefulSetMeta := metav1.ObjectMeta{
 		Name:      opts.stsName,
 		Namespace: db.Namespace,
 	}
 
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
 	readinessProbe := pt.Spec.ReadinessProbe
 	if readinessProbe != nil && structs.IsZero(*readinessProbe) {
@@ -388,12 +388,12 @@ func (c *Controller) ensureStatefulSet(db *api.PerconaXtraDB, opts workloadOptio
 	return vt, nil
 }
 
-func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.PerconaXtraDB) *apps.StatefulSet {
+func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet {
 	for i, container := range statefulSet.Spec.Template.Spec.Containers {
-		if container.Name == api.ResourceSingularPerconaXtraDB {
+		if container.Name == api.ResourceSingularMariaDB {
 			volumeMount := core.VolumeMount{
 				Name:      "data",
-				MountPath: api.PerconaXtraDBDataMountPath,
+				MountPath: api.MariaDBDataMountPath,
 			}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, volumeMount)
@@ -443,9 +443,9 @@ func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.PerconaXtraDB) *app
 }
 
 // upsertUserEnv add/overwrite env from user provided env in crd spec
-func upsertEnv(statefulSet *apps.StatefulSet, db *api.PerconaXtraDB) *apps.StatefulSet {
+func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet {
 	for i, container := range statefulSet.Spec.Template.Spec.Containers {
-		if container.Name == api.ResourceSingularPerconaXtraDB || container.Name == "exporter" {
+		if container.Name == api.ResourceSingularMariaDB || container.Name == "exporter" {
 			envs := []core.EnvVar{
 				{
 					Name: "MYSQL_ROOT_PASSWORD",

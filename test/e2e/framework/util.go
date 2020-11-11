@@ -43,7 +43,7 @@ func (f *Framework) CleanWorkloadLeftOvers() {
 	// delete statefulset
 	if err := f.kubeClient.AppsV1().StatefulSets(f.namespace).DeleteCollection(context.TODO(), meta_util.DeleteInForeground(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+			api.LabelDatabaseKind: api.ResourceKindMariaDB,
 		}).String(),
 	}); err != nil && !kerr.IsNotFound(err) {
 		fmt.Printf("error in deletion of Statefulset. Error: %v", err)
@@ -52,7 +52,7 @@ func (f *Framework) CleanWorkloadLeftOvers() {
 	// delete pvc
 	if err := f.kubeClient.CoreV1().PersistentVolumeClaims(f.namespace).DeleteCollection(context.TODO(), meta_util.DeleteInForeground(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+			api.LabelDatabaseKind: api.ResourceKindMariaDB,
 		}).String(),
 	}); err != nil && !kerr.IsNotFound(err) {
 		fmt.Printf("error in deletion of PVC. Error: %v", err)
@@ -61,7 +61,7 @@ func (f *Framework) CleanWorkloadLeftOvers() {
 	// delete secret
 	if err := f.kubeClient.CoreV1().Secrets(f.namespace).DeleteCollection(context.TODO(), meta_util.DeleteInForeground(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+			api.LabelDatabaseKind: api.ResourceKindMariaDB,
 		}).String(),
 	}); err != nil && !kerr.IsNotFound(err) {
 		fmt.Printf("error in deletion of Secret. Error: %v", err)
@@ -140,7 +140,7 @@ func (f *Framework) PrintDebugHelpers(pxName string, replicas int) {
 		fmt.Println(err)
 	}
 
-	fmt.Println("\n======================================[ Describe PerconaXtraDB ]===================================================")
+	fmt.Println("\n======================================[ Describe MariaDB ]===================================================")
 	if err := sh.Command("/usr/bin/kubectl", "describe", "px", "-n", f.Namespace()).Run(); err != nil {
 		fmt.Println(err)
 	}
@@ -168,7 +168,7 @@ func (f *Framework) EventuallyWipedOut(meta metav1.ObjectMeta) GomegaAsyncAssert
 		func() error {
 			labelMap := map[string]string{
 				api.LabelDatabaseName: meta.Name,
-				api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+				api.LabelDatabaseKind: api.ResourceKindMariaDB,
 			}
 			labelSelector := labels.SelectorFromSet(labelMap)
 

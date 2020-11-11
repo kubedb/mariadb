@@ -23,7 +23,7 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
 	"kubedb.dev/apimachinery/pkg/eventer"
-	validator "kubedb.dev/percona-xtradb/pkg/admission"
+	validator "kubedb.dev/mariadb/pkg/admission"
 
 	"github.com/pkg/errors"
 	"gomodules.xyz/x/log"
@@ -36,8 +36,8 @@ import (
 	dynamic_util "kmodules.xyz/client-go/dynamic"
 )
 
-func (c *Controller) create(db *api.PerconaXtraDB) error {
-	if err := validator.ValidatePerconaXtraDB(c.Client, c.DBClient, db, true); err != nil {
+func (c *Controller) create(db *api.MariaDB) error {
+	if err := validator.ValidateMariaDB(c.Client, c.DBClient, db, true); err != nil {
 		c.Recorder.Event(
 			db,
 			core.EventTypeWarning,
@@ -50,14 +50,14 @@ func (c *Controller) create(db *api.PerconaXtraDB) error {
 	}
 
 	if db.Status.Phase == "" {
-		perconaxtradb, err := util.UpdatePerconaXtraDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.PerconaXtraDBStatus) (types.UID, *api.PerconaXtraDBStatus) {
+		mariadb, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
 			in.Phase = api.DatabasePhaseProvisioning
 			return db.UID, in
 		}, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
-		db.Status = perconaxtradb.Status
+		db.Status = mariadb.Status
 	}
 
 	// For Percona XtraDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
@@ -101,7 +101,7 @@ func (c *Controller) create(db *api.PerconaXtraDB) error {
 	}
 
 	// ensure database StatefulSet
-	vt2, err := c.ensurePerconaXtraDB(db)
+	vt2, err := c.ensureMariaDB(db)
 	if err != nil {
 		return err
 	}
@@ -111,14 +111,14 @@ func (c *Controller) create(db *api.PerconaXtraDB) error {
 			db,
 			core.EventTypeNormal,
 			eventer.EventReasonSuccessful,
-			"Successfully created PerconaXtraDB",
+			"Successfully created MariaDB",
 		)
 	} else if vt1 == kutil.VerbPatched || vt2 == kutil.VerbPatched {
 		c.Recorder.Event(
 			db,
 			core.EventTypeNormal,
 			eventer.EventReasonSuccessful,
-			"Successfully patched PerconaXtraDB",
+			"Successfully patched MariaDB",
 		)
 	}
 
@@ -147,7 +147,7 @@ func (c *Controller) create(db *api.PerconaXtraDB) error {
 		}
 	}
 
-	per, err := util.UpdatePerconaXtraDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.PerconaXtraDBStatus) (types.UID, *api.PerconaXtraDBStatus) {
+	per, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
 		in.Phase = api.DatabasePhaseReady
 		in.ObservedGeneration = db.Generation
 		return db.UID, in
@@ -185,19 +185,19 @@ func (c *Controller) create(db *api.PerconaXtraDB) error {
 	return nil
 }
 
-func (c *Controller) halt(db *api.PerconaXtraDB) error {
+func (c *Controller) halt(db *api.MariaDB) error {
 	if db.Spec.Halted && db.Spec.TerminationPolicy != api.TerminationPolicyHalt {
 		return errors.New("can't halt db. 'spec.terminationPolicy' is not 'Halt'")
 	}
-	log.Infof("Halting PerconaXtraDB %v/%v", db.Namespace, db.Name)
+	log.Infof("Halting MariaDB %v/%v", db.Namespace, db.Name)
 	if err := c.haltDatabase(db); err != nil {
 		return err
 	}
 	if err := c.waitUntilPaused(db); err != nil {
 		return err
 	}
-	log.Infof("update status of PerconaXtraDB %v/%v to Halted.", db.Namespace, db.Name)
-	if _, err := util.UpdatePerconaXtraDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.PerconaXtraDBStatus) (types.UID, *api.PerconaXtraDBStatus) {
+	log.Infof("update status of MariaDB %v/%v to Halted.", db.Namespace, db.Name)
+	if _, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
 		in.Phase = api.DatabasePhaseHalted
 		in.ObservedGeneration = db.Generation
 		return db.UID, in
@@ -207,7 +207,7 @@ func (c *Controller) halt(db *api.PerconaXtraDB) error {
 	return nil
 }
 
-func (c *Controller) terminate(db *api.PerconaXtraDB) error {
+func (c *Controller) terminate(db *api.MariaDB) error {
 	// If TerminationPolicy is "halt", keep PVCs and Secrets intact.
 	// TerminationPolicyPause is deprecated and will be removed in future.
 	if db.Spec.TerminationPolicy == api.TerminationPolicyHalt {
@@ -232,8 +232,8 @@ func (c *Controller) terminate(db *api.PerconaXtraDB) error {
 	return nil
 }
 
-func (c *Controller) setOwnerReferenceToOffshoots(db *api.PerconaXtraDB) error {
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+func (c *Controller) setOwnerReferenceToOffshoots(db *api.MariaDB) error {
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 	selector := labels.SelectorFromSet(db.OffshootSelectors())
 
 	// If TerminationPolicy is "wipeOut", delete snapshots and secrets,
@@ -264,7 +264,7 @@ func (c *Controller) setOwnerReferenceToOffshoots(db *api.PerconaXtraDB) error {
 		owner)
 }
 
-func (c *Controller) removeOwnerReferenceFromOffshoots(db *api.PerconaXtraDB) error {
+func (c *Controller) removeOwnerReferenceFromOffshoots(db *api.MariaDB) error {
 	// First, Get LabelSelector for Other Components
 	labelSelector := labels.SelectorFromSet(db.OffshootSelectors())
 

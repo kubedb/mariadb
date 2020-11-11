@@ -32,21 +32,21 @@ import (
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 )
 
-func (c *Controller) newMonitorController(db *api.PerconaXtraDB) (mona.Agent, error) {
+func (c *Controller) newMonitorController(db *api.MariaDB) (mona.Agent, error) {
 	monitorSpec := db.Spec.Monitor
 
 	if monitorSpec == nil {
-		return nil, fmt.Errorf("MonitorSpec not found for PerconaXtraDB %v/%v in %v", db.Namespace, db.Name, db.Spec)
+		return nil, fmt.Errorf("MonitorSpec not found for MariaDB %v/%v in %v", db.Namespace, db.Name, db.Spec)
 	}
 
 	if monitorSpec.Prometheus != nil {
 		return agents.New(monitorSpec.Agent, c.Client, c.promClient), nil
 	}
 
-	return nil, fmt.Errorf("monitoring controller not found for PerconaXtraDB %v/%v in %v", db.Namespace, db.Name, monitorSpec)
+	return nil, fmt.Errorf("monitoring controller not found for MariaDB %v/%v in %v", db.Namespace, db.Name, monitorSpec)
 }
 
-func (c *Controller) addOrUpdateMonitor(db *api.PerconaXtraDB) (kutil.VerbType, error) {
+func (c *Controller) addOrUpdateMonitor(db *api.MariaDB) (kutil.VerbType, error) {
 	agent, err := c.newMonitorController(db)
 	if err != nil {
 		return kutil.VerbUnchanged, err
@@ -54,7 +54,7 @@ func (c *Controller) addOrUpdateMonitor(db *api.PerconaXtraDB) (kutil.VerbType, 
 	return agent.CreateOrUpdate(db.StatsService(), db.Spec.Monitor)
 }
 
-func (c *Controller) deleteMonitor(db *api.PerconaXtraDB) error {
+func (c *Controller) deleteMonitor(db *api.MariaDB) error {
 	agent, err := c.newMonitorController(db)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (c *Controller) deleteMonitor(db *api.PerconaXtraDB) error {
 	return err
 }
 
-func (c *Controller) getOldAgent(db *api.PerconaXtraDB) mona.Agent {
+func (c *Controller) getOldAgent(db *api.MariaDB) mona.Agent {
 	service, err := c.Client.CoreV1().Services(db.Namespace).Get(context.TODO(), db.StatsService().ServiceName(), metav1.GetOptions{})
 	if err != nil {
 		return nil
@@ -72,7 +72,7 @@ func (c *Controller) getOldAgent(db *api.PerconaXtraDB) mona.Agent {
 	return agents.New(mona.AgentType(oldAgentType), c.Client, c.promClient)
 }
 
-func (c *Controller) setNewAgent(db *api.PerconaXtraDB) error {
+func (c *Controller) setNewAgent(db *api.MariaDB) error {
 	service, err := c.Client.CoreV1().Services(db.Namespace).Get(context.TODO(), db.StatsService().ServiceName(), metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (c *Controller) setNewAgent(db *api.PerconaXtraDB) error {
 	return err
 }
 
-func (c *Controller) manageMonitor(db *api.PerconaXtraDB) error {
+func (c *Controller) manageMonitor(db *api.MariaDB) error {
 	oldAgent := c.getOldAgent(db)
 	if db.Spec.Monitor != nil {
 		if oldAgent != nil &&

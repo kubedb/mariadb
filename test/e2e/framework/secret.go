@@ -174,7 +174,7 @@ func (f *Framework) UpdateSecret(meta metav1.ObjectMeta, transformer func(core.S
 	return fmt.Errorf("failed to update Secret %s@%s after %d attempts", meta.Name, meta.Namespace, attempt)
 }
 
-func (f *Framework) GetMySQLRootPassword(px *api.PerconaXtraDB) (string, error) {
+func (f *Framework) GetMySQLRootPassword(px *api.MariaDB) (string, error) {
 	secret, err := f.kubeClient.CoreV1().Secrets(px.Namespace).Get(context.TODO(), px.Spec.AuthSecret.Name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -202,7 +202,7 @@ func (f *Framework) DeleteSecret(meta metav1.ObjectMeta) error {
 
 func (f *Framework) EventuallyDBSecretCount(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	labelMap := map[string]string{
-		api.LabelDatabaseKind: api.ResourceKindPerconaXtraDB,
+		api.LabelDatabaseKind: api.ResourceKindMariaDB,
 		api.LabelDatabaseName: meta.Name,
 	}
 	labelSelector := labels.SelectorFromSet(labelMap)

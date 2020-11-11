@@ -40,7 +40,7 @@ import (
 	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
-func getGarbdConfig(db *api.PerconaXtraDB) ([]byte, error) {
+func getGarbdConfig(db *api.MariaDB) ([]byte, error) {
 	if !db.IsCluster() {
 		return nil, nil
 	}
@@ -61,7 +61,7 @@ func getGarbdConfig(db *api.PerconaXtraDB) ([]byte, error) {
 	})
 }
 
-func (c *Controller) ensureAppBinding(db *api.PerconaXtraDB) (kutil.VerbType, error) {
+func (c *Controller) ensureAppBinding(db *api.MariaDB) (kutil.VerbType, error) {
 	port, err := c.GetPrimaryServicePort(db)
 	if err != nil {
 		return kutil.VerbUnchanged, err
@@ -74,16 +74,16 @@ func (c *Controller) ensureAppBinding(db *api.PerconaXtraDB) (kutil.VerbType, er
 		Namespace: db.Namespace,
 	}
 
-	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindPerconaXtraDB))
+	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
 	garbdCnfJson, err := getGarbdConfig(db)
 	if err != nil {
 		return kutil.VerbUnchanged, err
 	}
 
-	pxVersion, err := c.DBClient.CatalogV1alpha1().PerconaXtraDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
+	dbVersion, err := c.DBClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 	if err != nil {
-		return kutil.VerbUnchanged, fmt.Errorf("failed to get PerconaXtraDBVersion %v for %v/%v. Reason: %v", db.Spec.Version, db.Namespace, db.Name, err)
+		return kutil.VerbUnchanged, fmt.Errorf("failed to get MariaDBVersion %v for %v/%v. Reason: %v", db.Spec.Version, db.Namespace, db.Name, err)
 	}
 
 	_, vt, err := appcat_util.CreateOrPatchAppBinding(
@@ -96,7 +96,7 @@ func (c *Controller) ensureAppBinding(db *api.PerconaXtraDB) (kutil.VerbType, er
 			in.Annotations = meta_util.FilterKeys(kubedb.GroupName, in.Annotations, db.Annotations)
 
 			in.Spec.Type = appmeta.Type()
-			in.Spec.Version = pxVersion.Spec.Version
+			in.Spec.Version = dbVersion.Spec.Version
 			in.Spec.ClientConfig.URL = pointer.StringP(fmt.Sprintf("tcp(%s:%d)/", db.ServiceName(), port))
 			in.Spec.ClientConfig.Service = &appcat.ServiceReference{
 				Scheme: "mysql",
@@ -135,19 +135,19 @@ func (c *Controller) ensureAppBinding(db *api.PerconaXtraDB) (kutil.VerbType, er
 	return vt, nil
 }
 
-func (c *Controller) GetPrimaryServicePort(db *api.PerconaXtraDB) (int32, error) {
+func (c *Controller) GetPrimaryServicePort(db *api.MariaDB) (int32, error) {
 	ports := ofst.PatchServicePorts([]core.ServicePort{
 		{
 			Name:       api.MySQLPrimaryServicePortName,
 			Port:       api.MySQLDatabasePort,
 			TargetPort: intstr.FromString(api.MySQLDatabasePortName),
 		},
-	}, db.Spec.ServiceTemplate.Spec.Ports)
+	}, api.GetServiceTemplate(db.Spec.ServiceTemplates, api.PrimaryServiceAlias).Spec.Ports)
 
 	for _, p := range ports {
 		if p.Name == api.MySQLPrimaryServicePortName {
 			return p.Port, nil
 		}
 	}
-	return 0, fmt.Errorf("failed to detect primary port for PerconaXtraDB %s/%s", db.Namespace, db.Name)
+	return 0, fmt.Errorf("failed to detect primary port for MariaDB %s/%s", db.Namespace, db.Name)
 }

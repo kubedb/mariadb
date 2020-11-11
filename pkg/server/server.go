@@ -25,8 +25,8 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/admission/namespace"
 	"kubedb.dev/apimachinery/pkg/eventer"
-	pxAdmsn "kubedb.dev/percona-xtradb/pkg/admission"
-	"kubedb.dev/percona-xtradb/pkg/controller"
+	pxAdmsn "kubedb.dev/mariadb/pkg/admission"
+	"kubedb.dev/mariadb/pkg/controller"
 
 	license "go.bytebuilders.dev/license-verifier/kubernetes"
 	"gomodules.xyz/x/log"
@@ -75,7 +75,7 @@ func init() {
 	)
 }
 
-type PerconaXtraDBServerConfig struct {
+type MariaDBServerConfig struct {
 	GenericConfig  *genericapiserver.RecommendedConfig
 	ExtraConfig    ExtraConfig
 	OperatorConfig *controller.OperatorConfig
@@ -85,13 +85,13 @@ type ExtraConfig struct {
 	AdmissionHooks []hooks.AdmissionHook
 }
 
-// PerconaXtraDBServer contains state for a Kubernetes cluster master/api server.
-type PerconaXtraDBServer struct {
+// MariaDBServer contains state for a Kubernetes cluster master/api server.
+type MariaDBServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 	Operator         *controller.Controller
 }
 
-func (op *PerconaXtraDBServer) Run(stopCh <-chan struct{}) error {
+func (op *MariaDBServer) Run(stopCh <-chan struct{}) error {
 	go op.Operator.Run(stopCh)
 	return op.GenericAPIServer.PrepareRun().Run(stopCh)
 }
@@ -108,7 +108,7 @@ type CompletedConfig struct {
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
-func (c *PerconaXtraDBServerConfig) Complete() CompletedConfig {
+func (c *MariaDBServerConfig) Complete() CompletedConfig {
 	completedCfg := completedConfig{
 		c.GenericConfig.Complete(),
 		c.ExtraConfig,
@@ -123,8 +123,8 @@ func (c *PerconaXtraDBServerConfig) Complete() CompletedConfig {
 	return CompletedConfig{&completedCfg}
 }
 
-// New returns a new instance of PerconaXtraDBServer from the given config.
-func (c completedConfig) New() (*PerconaXtraDBServer, error) {
+// New returns a new instance of MariaDBServer from the given config.
+func (c completedConfig) New() (*MariaDBServer, error) {
 	genericServer, err := c.GenericConfig.New("kubedb-server", genericapiserver.NewEmptyDelegate()) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
@@ -132,15 +132,15 @@ func (c completedConfig) New() (*PerconaXtraDBServer, error) {
 
 	if c.OperatorConfig.EnableMutatingWebhook {
 		c.ExtraConfig.AdmissionHooks = []hooks.AdmissionHook{
-			&pxAdmsn.PerconaXtraDBMutator{},
+			&pxAdmsn.MariaDBMutator{},
 		}
 	}
 	if c.OperatorConfig.EnableValidatingWebhook {
 		c.ExtraConfig.AdmissionHooks = append(c.ExtraConfig.AdmissionHooks,
-			&pxAdmsn.PerconaXtraDBValidator{},
+			&pxAdmsn.MariaDBValidator{},
 			//&snapshot.SnapshotValidator{},
 			&namespace.NamespaceValidator{
-				Resources: []string{api.ResourcePluralPerconaXtraDB},
+				Resources: []string{api.ResourcePluralMariaDB},
 			},
 		)
 	}
@@ -152,7 +152,7 @@ func (c completedConfig) New() (*PerconaXtraDBServer, error) {
 		return nil, err
 	}
 
-	s := &PerconaXtraDBServer{
+	s := &MariaDBServer{
 		GenericAPIServer: genericServer,
 		Operator:         ctrl,
 	}
@@ -210,16 +210,16 @@ func (c completedConfig) New() (*PerconaXtraDBServer, error) {
 		s.GenericAPIServer.AddPostStartHookOrDie("validating-webhook-xray",
 			func(ctx genericapiserver.PostStartHookContext) error {
 				go func() {
-					xray := reg_util.NewCreateValidatingWebhookXray(c.OperatorConfig.ClientConfig, apiserviceName, &api.PerconaXtraDB{
+					xray := reg_util.NewCreateValidatingWebhookXray(c.OperatorConfig.ClientConfig, apiserviceName, &api.MariaDB{
 						TypeMeta: metav1.TypeMeta{
 							APIVersion: api.SchemeGroupVersion.String(),
-							Kind:       api.ResourceKindPerconaXtraDB,
+							Kind:       api.ResourceKindMariaDB,
 						},
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-percona-xtradb-for-webhook-xray",
+							Name:      "test-mariadb-for-webhook-xray",
 							Namespace: "default",
 						},
-						Spec: api.PerconaXtraDBSpec{
+						Spec: api.MariaDBSpec{
 							StorageType: api.StorageType("Invalid"),
 						},
 					}, ctx.StopCh)
@@ -233,7 +233,7 @@ func (c completedConfig) New() (*PerconaXtraDBServer, error) {
 						if e2 == nil {
 							eventer.CreateEventWithLog(
 								kubernetes.NewForConfigOrDie(c.OperatorConfig.ClientConfig),
-								"percona-xtradb-operator",
+								"mariadb-operator",
 								w,
 								core.EventTypeWarning,
 								eventer.EventReasonAdmissionWebhookNotActivated,

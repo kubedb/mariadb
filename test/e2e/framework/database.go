@@ -51,11 +51,11 @@ func (f *Framework) forwardPort(meta metav1.ObjectMeta, clientPodIndex, remotePo
 	return tunnel, nil
 }
 
-func (f *Framework) getPerconaXtraDBClient(meta metav1.ObjectMeta, tunnel *portforward.Tunnel, dbName string) (*xorm.Engine, error) {
+func (f *Framework) getMariaDBClient(meta metav1.ObjectMeta, tunnel *portforward.Tunnel, dbName string) (*xorm.Engine, error) {
 	var user, pass string
 	var userErr, passErr error
 
-	px, err := f.GetPerconaXtraDB(meta)
+	px, err := f.GetMariaDB(meta)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (f *Framework) GetEngine(
 		return nil, nil, err
 	}
 
-	en, err = f.getPerconaXtraDBClient(meta, tunnel, dbName)
+	en, err = f.getMariaDBClient(meta, tunnel, dbName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -216,7 +216,7 @@ func (f *Framework) EventuallyCountRow(meta metav1.ObjectMeta, dbName string, po
 	)
 }
 
-func (f *Framework) EventuallyPerconaXtraDBVariable(meta metav1.ObjectMeta, dbName string, podIndex int, config string) GomegaAsyncAssertion {
+func (f *Framework) EventuallyMariaDBVariable(meta metav1.ObjectMeta, dbName string, podIndex int, config string) GomegaAsyncAssertion {
 	configPair := strings.Split(config, "=")
 	sql := fmt.Sprintf("SHOW VARIABLES LIKE '%s';", configPair[0])
 	return Eventually(

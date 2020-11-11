@@ -21,8 +21,8 @@ import (
 	"io"
 	"net"
 
-	"kubedb.dev/percona-xtradb/pkg/controller"
-	"kubedb.dev/percona-xtradb/pkg/server"
+	"kubedb.dev/mariadb/pkg/controller"
+	"kubedb.dev/mariadb/pkg/server"
 
 	"github.com/spf13/pflag"
 	license "go.bytebuilders.dev/license-verifier/kubernetes"
@@ -35,7 +35,7 @@ import (
 
 const defaultEtcdPathPrefix = "/registry/kubedb.com"
 
-type PerconaXtraDBServerOptions struct {
+type MariaDBServerOptions struct {
 	RecommendedOptions *genericoptions.RecommendedOptions
 	ExtraOptions       *ExtraOptions
 
@@ -43,13 +43,13 @@ type PerconaXtraDBServerOptions struct {
 	StdErr io.Writer
 }
 
-func NewPerconaXtraDBServerOptions(out, errOut io.Writer) *PerconaXtraDBServerOptions {
-	o := &PerconaXtraDBServerOptions{
+func NewMariaDBServerOptions(out, errOut io.Writer) *MariaDBServerOptions {
+	o := &MariaDBServerOptions{
 		// TODO we will nil out the etcd storage options.  This requires a later level of k8s.io/apiserver
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
 			server.Codecs.LegacyCodec(admissionv1beta1.SchemeGroupVersion),
-			genericoptions.NewProcessInfo("percona-xtradb-operator", meta.Namespace()),
+			genericoptions.NewProcessInfo("mariadb-operator", meta.Namespace()),
 		),
 		ExtraOptions: NewExtraOptions(),
 		StdOut:       out,
@@ -61,20 +61,20 @@ func NewPerconaXtraDBServerOptions(out, errOut io.Writer) *PerconaXtraDBServerOp
 	return o
 }
 
-func (o PerconaXtraDBServerOptions) AddFlags(fs *pflag.FlagSet) {
+func (o MariaDBServerOptions) AddFlags(fs *pflag.FlagSet) {
 	o.RecommendedOptions.AddFlags(fs)
 	o.ExtraOptions.AddFlags(fs)
 }
 
-func (o PerconaXtraDBServerOptions) Validate(args []string) error {
+func (o MariaDBServerOptions) Validate(args []string) error {
 	return nil
 }
 
-func (o *PerconaXtraDBServerOptions) Complete() error {
+func (o *MariaDBServerOptions) Complete() error {
 	return nil
 }
 
-func (o PerconaXtraDBServerOptions) Config() (*server.PerconaXtraDBServerConfig, error) {
+func (o MariaDBServerOptions) Config() (*server.MariaDBServerConfig, error) {
 	// TODO have a "real" external address
 	if err := o.RecommendedOptions.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
 		return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
@@ -91,7 +91,7 @@ func (o PerconaXtraDBServerOptions) Config() (*server.PerconaXtraDBServerConfig,
 		return nil, err
 	}
 
-	config := &server.PerconaXtraDBServerConfig{
+	config := &server.MariaDBServerConfig{
 		GenericConfig:  serverConfig,
 		ExtraConfig:    server.ExtraConfig{},
 		OperatorConfig: controllerConfig,
@@ -99,7 +99,7 @@ func (o PerconaXtraDBServerOptions) Config() (*server.PerconaXtraDBServerConfig,
 	return config, nil
 }
 
-func (o PerconaXtraDBServerOptions) Run(stopCh <-chan struct{}) error {
+func (o MariaDBServerOptions) Run(stopCh <-chan struct{}) error {
 	config, err := o.Config()
 	if err != nil {
 		return err

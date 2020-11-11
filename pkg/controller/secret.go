@@ -34,14 +34,14 @@ const (
 	mysqlUser = "root"
 )
 
-func (c *Controller) ensureAuthSecret(db *api.PerconaXtraDB) error {
+func (c *Controller) ensureAuthSecret(db *api.MariaDB) error {
 	if db.Spec.AuthSecret == nil {
 		authSecret, err := c.createAuthSecret(db)
 		if err != nil {
 			return err
 		}
 
-		per, _, err := util.PatchPerconaXtraDB(context.TODO(), c.DBClient.KubedbV1alpha2(), db, func(in *api.PerconaXtraDB) *api.PerconaXtraDB {
+		per, _, err := util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), db, func(in *api.MariaDB) *api.MariaDB {
 			in.Spec.AuthSecret = authSecret
 			return in
 		}, metav1.PatchOptions{})
@@ -54,7 +54,7 @@ func (c *Controller) ensureAuthSecret(db *api.PerconaXtraDB) error {
 	return c.upgradeAuthSecret(db)
 }
 
-func (c *Controller) createAuthSecret(db *api.PerconaXtraDB) (*core.LocalObjectReference, error) {
+func (c *Controller) createAuthSecret(db *api.MariaDB) (*core.LocalObjectReference, error) {
 	authSecretName := db.Name + "-auth"
 
 	sc, err := c.checkSecret(authSecretName, db)
@@ -84,8 +84,8 @@ func (c *Controller) createAuthSecret(db *api.PerconaXtraDB) (*core.LocalObjectR
 }
 
 // This is done to fix 0.8.0 -> 0.9.0 upgrade due to
-// https://github.com/kubedb/percona-xtradb/pull/115/files#diff-10ddaf307bbebafda149db10a28b9c24R17 commit
-func (c *Controller) upgradeAuthSecret(db *api.PerconaXtraDB) error {
+// https://github.com/kubedb/mariadb/pull/115/files#diff-10ddaf307bbebafda149db10a28b9c24R17 commit
+func (c *Controller) upgradeAuthSecret(db *api.MariaDB) error {
 	meta := metav1.ObjectMeta{
 		Name:      db.Spec.AuthSecret.Name,
 		Namespace: db.Namespace,
@@ -102,7 +102,7 @@ func (c *Controller) upgradeAuthSecret(db *api.PerconaXtraDB) error {
 	return err
 }
 
-func (c *Controller) checkSecret(secretName string, db *api.PerconaXtraDB) (*core.Secret, error) {
+func (c *Controller) checkSecret(secretName string, db *api.MariaDB) (*core.Secret, error) {
 	secret, err := c.Client.CoreV1().Secrets(db.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		if kerr.IsNotFound(err) {
@@ -111,7 +111,7 @@ func (c *Controller) checkSecret(secretName string, db *api.PerconaXtraDB) (*cor
 		return nil, err
 	}
 
-	if secret.Labels[api.LabelDatabaseKind] != api.ResourceKindPerconaXtraDB ||
+	if secret.Labels[api.LabelDatabaseKind] != api.ResourceKindMariaDB ||
 		secret.Labels[api.LabelDatabaseName] != db.Name {
 		return nil, fmt.Errorf(`intended secret "%v/%v" already exists`, db.Namespace, secretName)
 	}

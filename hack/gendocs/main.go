@@ -21,7 +21,7 @@ import (
 	"log"
 	"os"
 
-	"kubedb.dev/percona-xtradb/pkg/cmds"
+	"kubedb.dev/mariadb/pkg/cmds"
 
 	"github.com/spf13/cobra/doc"
 	"gomodules.xyz/runtime"
@@ -30,7 +30,7 @@ import (
 // ref: https://github.com/spf13/cobra/blob/master/doc/md_docs.md
 func main() {
 	rootCmd := cmds.NewRootCmd("")
-	dir := runtime.GOPath() + "/src/kubedb.dev/percona-xtradb/docs/reference"
+	dir := runtime.GOPath() + "/src/kubedb.dev/mariadb/docs/reference"
 	fmt.Printf("Generating cli markdown tree in: %v\n", dir)
 	err := os.RemoveAll(dir)
 	if err != nil {
