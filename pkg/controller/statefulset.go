@@ -470,7 +470,7 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 					},
 				},
 				{
-					Name: "MYSQL_ALLOW_EMPTY_PASSWORD",
+					Name:  "MYSQL_ALLOW_EMPTY_PASSWORD",
 					Value: "true",
 				},
 			}
