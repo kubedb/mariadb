@@ -92,7 +92,6 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 			Resources: db.Spec.PodTemplate.Spec.Resources,
 		},
 	}
-
 	var cmds, args []string
 	var ports = []core.ContainerPort{
 		{
