@@ -49,6 +49,7 @@ type MariaDBValidator struct {
 }
 
 var _ hookapi.AdmissionHook = &MariaDBValidator{}
+
 //TODO: modify for MariaDB
 var forbiddenEnvVars = []string{
 	"MYSQL_ROOT_PASSWORD",

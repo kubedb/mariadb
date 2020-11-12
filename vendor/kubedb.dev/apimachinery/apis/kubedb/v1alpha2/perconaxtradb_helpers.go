@@ -188,15 +188,7 @@ func (p *PerconaXtraDBSpec) setDefaultProbes() {
 	var readynessProbeCmd []string
 	if pointer.Int32(p.Replicas) > 1 {
 		readynessProbeCmd = []string{
-			"bash",
-			"-c",
-			`export MYSQL_PWD="${MYSQL_ROOT_PASSWORD}"
-ping_resp=$(mysqladmin -uroot ping)
-if [[ "$ping_resp" != "mysqld is alive" ]]; then
-    echo "[ERROR] server is not ready. PING_RESPONSE: $ping_resp"
-    exit 1
-fi
-`,
+			"/cluster-check.sh",
 		}
 	} else {
 		readynessProbeCmd = []string{
