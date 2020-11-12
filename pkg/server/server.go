@@ -138,7 +138,6 @@ func (c completedConfig) New() (*MariaDBServer, error) {
 	if c.OperatorConfig.EnableValidatingWebhook {
 		c.ExtraConfig.AdmissionHooks = append(c.ExtraConfig.AdmissionHooks,
 			&pxAdmsn.MariaDBValidator{},
-			//&snapshot.SnapshotValidator{},
 			&namespace.NamespaceValidator{
 				Resources: []string{api.ResourcePluralMariaDB},
 			},
@@ -239,6 +238,7 @@ func (c completedConfig) New() (*MariaDBServer, error) {
 								eventer.EventReasonAdmissionWebhookNotActivated,
 								err.Error())
 						}
+						fmt.Println(".................................err=", err.Error())
 						panic(err)
 					}
 				}()

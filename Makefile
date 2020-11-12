@@ -374,10 +374,12 @@ install:
 		--set catalog.mongo=false                         \
 		--set catalog.mysql=false                         \
 		--set catalog.mariadb=true                        \
+		--set catalog.perconaxtradb=false                 \
 		--set catalog.pgbouncer=false                     \
 		--set catalog.postgres=false                      \
 		--set catalog.proxysql=false                      \
-		--set catalog.redis=false
+		--set catalog.redis=false						  \
+		--set image.registry=$(REGISTRY)
 
 .PHONY: uninstall
 uninstall:
