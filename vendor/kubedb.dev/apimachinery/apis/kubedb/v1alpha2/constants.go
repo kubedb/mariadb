@@ -48,6 +48,14 @@ const (
 
 	DBCustomConfigName = "custom-config"
 
+<<<<<<< HEAD
+=======
+	DefaultCPULimit      = ".250"
+	DefaultMemoryLimit   = "512Mi"
+	DefaultCPURequest    = ".100"
+	DefaultMemoryRequest = "256Mi"
+
+>>>>>>> changed apimachinery constants for mariadb
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
 	ElasticsearchKey = ResourceSingularElasticsearch + "." + kubedb.GroupName
@@ -153,7 +161,7 @@ const (
 	PerconaXtraDBClusterCustomConfigMountPath = "/etc/percona-xtradb-cluster.conf.d/"
 
 	// =========================== MariaDB Constants ============================
-	MariaDBClusterRecommendedVersion    = "5.7"
+	MariaDBClusterRecommendedVersion    = "10.5"
 	MariaDBMaxClusterNameLength         = 32
 	MariaDBStandaloneReplicas           = 1
 	MariaDBDefaultClusterSize           = 3
