@@ -5,7 +5,7 @@
 
 # mariadb
 
-Run Percona XtraDB in Kubernetes
+Run MariaDB in Kubernetes
 
 ## Installation
 

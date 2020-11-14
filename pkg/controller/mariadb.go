@@ -60,7 +60,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 		db.Status = mariadb.Status
 	}
 
-	// For Percona XtraDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
+	// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
 	// Then, KubeDB should create the StatefulSet using those PVCs. So, for clustering mode, we are going to
 	// wait for restore process to complete before creating the StatefulSet.
 	//======================== Wait for the initial restore =====================================
@@ -128,7 +128,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 		return err
 	}
 
-	// For Standalone Percona XtraDB (px.spec.replicas = 1),, Stash directly restore into the database.
+	// For Standalone MariaDB (px.spec.replicas = 1),, Stash directly restore into the database.
 	// So, for standalone mode, we are going to wait for restore process to complete after creating the StatefulSet.
 	//======================== Wait for the initial restore =====================================
 	if db.Spec.Init != nil && db.Spec.Init.WaitForInitialRestore && !db.IsCluster() {
