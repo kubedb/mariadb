@@ -50,11 +50,6 @@ const (
 	DBTLSVolume         = "tls-volume"
 	DBExporterTLSVolume = "exporter-tls-volume"
 
-	DefaultCPULimit      = ".250"
-	DefaultMemoryLimit   = "512Mi"
-	DefaultCPURequest    = ".100"
-	DefaultMemoryRequest = "256Mi"
-
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
 	ElasticsearchKey = ResourceSingularElasticsearch + "." + kubedb.GroupName
@@ -166,7 +161,7 @@ const (
 	PerconaXtraDBClusterCustomConfigMountPath = "/etc/percona-xtradb-cluster.conf.d/"
 
 	// =========================== MariaDB Constants ============================
-	MariaDBClusterRecommendedVersion    = "10.5"
+	MariaDBClusterRecommendedVersion    = "5.7"
 	MariaDBMaxClusterNameLength         = 32
 	MariaDBStandaloneReplicas           = 1
 	MariaDBDefaultClusterSize           = 3
