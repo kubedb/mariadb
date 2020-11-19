@@ -1143,10 +1143,14 @@ kmodules.xyz/prober/api/v1
 kmodules.xyz/webhook-runtime/admission/v1beta1
 kmodules.xyz/webhook-runtime/registry/admissionreview/v1beta1
 <<<<<<< HEAD
+<<<<<<< HEAD
 # kubedb.dev/apimachinery v0.15.3-0.20201216163411-d37718a20955
 =======
 # kubedb.dev/apimachinery v0.15.2-0.20201113051143-367fa125f4be
 >>>>>>> changed apimachinery constants for mariadb
+=======
+# kubedb.dev/apimachinery v0.15.2-0.20201119104114-c45cc2ba5bc8
+>>>>>>> fixed cluster socket issue
 kubedb.dev/apimachinery/apis
 kubedb.dev/apimachinery/apis/autoscaling
 kubedb.dev/apimachinery/apis/autoscaling/v1alpha1

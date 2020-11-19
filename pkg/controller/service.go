@@ -57,6 +57,23 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 				Port:       api.MySQLDatabasePort,
 				TargetPort: intstr.FromString(api.MySQLDatabasePortName),
 			},
+			{
+				Name: "ist",
+				Port: 4568,
+			},
+			{
+				Name: "sst",
+				Port: 4444,
+			},
+			{
+				Name: "replication-tcp",
+				Port: 4567,
+			},
+			{
+				Name: "replication-udp",
+				Port: 4567,
+				Protocol: "UDP",
+			},
 		})
 
 		return in

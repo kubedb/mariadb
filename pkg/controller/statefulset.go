@@ -24,6 +24,7 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
+	// App level options
 	"github.com/fatih/structs"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
@@ -36,10 +37,9 @@ import (
 	core_util "kmodules.xyz/client-go/core/v1"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 	ofst "kmodules.xyz/offshoot-api/api/v1"
-)
+	)
 
-type workloadOptions struct {
-	// App level options
+	type workloadOptions struct {
 	stsName   string
 	labels    map[string]string
 	selectors map[string]string
@@ -111,13 +111,23 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 		}
 		ports = append(ports, []core.ContainerPort{
 			{
+				Name: "ist",
+				ContainerPort: 4568,
+			},
+			{
 				Name:          "sst",
+				ContainerPort: 4444,
+			},
+			{
+				Name:          "replication-tcp",
 				ContainerPort: 4567,
 			},
 			{
-				Name:          "replication",
-				ContainerPort: 4568,
+				Name:          "replication-udp",
+				ContainerPort: 4567,
+				Protocol:      core.ProtocolUDP,
 			},
+
 		}...)
 	}
 
@@ -468,10 +478,6 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 							Key: core.BasicAuthUsernameKey,
 						},
 					},
-				},
-				{
-					Name:  "MYSQL_ALLOW_EMPTY_PASSWORD",
-					Value: "true",
 				},
 			}
 

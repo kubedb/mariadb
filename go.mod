@@ -33,7 +33,11 @@ require (
 	kmodules.xyz/objectstore-api v0.0.0-20201105133858-cbb2af88d50a
 	kmodules.xyz/offshoot-api v0.0.0-20201105074700-8675f5f686f2
 	kmodules.xyz/webhook-runtime v0.0.0-20201105073856-2dc7382b88c6
+<<<<<<< HEAD
 	kubedb.dev/apimachinery v0.15.3-0.20201216163411-d37718a20955
+=======
+	kubedb.dev/apimachinery v0.15.2-0.20201119104114-c45cc2ba5bc8
+>>>>>>> fixed cluster socket issue
 	stash.appscode.dev/apimachinery v0.11.7
 )
 
