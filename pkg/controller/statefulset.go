@@ -158,7 +158,7 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 	var monitorContainer core.Container
 	if db.Spec.Monitor != nil && db.Spec.Monitor.Agent.Vendor() == mona.VendorPrometheus {
 		monitorContainer = core.Container{
-			Name: "exporter",
+			Name: api.ContainerExporterName,
 			Command: []string{
 				"/bin/sh",
 			},
