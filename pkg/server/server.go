@@ -238,7 +238,6 @@ func (c completedConfig) New() (*MariaDBServer, error) {
 								eventer.EventReasonAdmissionWebhookNotActivated,
 								err.Error())
 						}
-						fmt.Println(".................................err=", err.Error())
 						panic(err)
 					}
 				}()
