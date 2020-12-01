@@ -70,8 +70,8 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 				Port: 4567,
 			},
 			{
-				Name: "replication-udp",
-				Port: 4567,
+				Name:     "replication-udp",
+				Port:     4567,
 				Protocol: "UDP",
 			},
 		})

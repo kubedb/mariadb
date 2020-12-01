@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	// App level options
+
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
-	// App level options
 	"github.com/fatih/structs"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
@@ -38,9 +39,9 @@ import (
 	meta_util "kmodules.xyz/client-go/meta"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 	ofst "kmodules.xyz/offshoot-api/api/v1"
-	)
+)
 
-	type workloadOptions struct {
+type workloadOptions struct {
 	stsName   string
 	labels    map[string]string
 	selectors map[string]string
@@ -112,7 +113,7 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 		}
 		ports = append(ports, []core.ContainerPort{
 			{
-				Name: "ist",
+				Name:          "ist",
 				ContainerPort: 4568,
 			},
 			{
@@ -128,7 +129,6 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 				ContainerPort: 4567,
 				Protocol:      core.ProtocolUDP,
 			},
-
 		}...)
 	}
 
