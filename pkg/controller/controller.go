@@ -116,6 +116,7 @@ func (c *Controller) Init() error {
 func (c *Controller) RunControllers(stopCh <-chan struct{}) {
 	// Watch x  TPR objects
 	c.pxQueue.Run(stopCh)
+	c.RunHealthChecker(stopCh)
 }
 
 // Blocks caller. Intended to be called as a Go routine.
