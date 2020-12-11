@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
@@ -31,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	kutil "kmodules.xyz/client-go"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	dynamic_util "kmodules.xyz/client-go/dynamic"
 )
@@ -45,20 +45,12 @@ func (c *Controller) create(db *api.MariaDB) error {
 			err.Error(),
 		)
 		log.Errorln(err)
-		// stop Scheduler in case there is any.
 		return nil
 	}
 
-	if db.Status.Phase == "" {
-		mariadb, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
-			in.Phase = api.DatabasePhaseProvisioning
-			return db.UID, in
-		}, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
-		db.Status = mariadb.Status
-	}
+	// Ensure Service account, role, rolebinding, and PSP for database statefulsets
+	if err := c.ensureRBACStuff(db); err != nil{
+		return err
 
 	// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
 	// Then, KubeDB should create the StatefulSet using those PVCs. So, for clustering mode, we are going to
@@ -81,18 +73,11 @@ func (c *Controller) create(db *api.MariaDB) error {
 	}
 
 	// ensure Governing Service
-	if err := c.ensureGoverningService(db); err != nil {
+	if err := c.ensureGoverningService(db); err != nil{
 		return fmt.Errorf(`failed to create governing Service for : "%v/%v". Reason: %v`, db.Namespace, db.Name, err)
 	}
 
-	// Ensure ClusterRoles for statefulsets
-	if err := c.ensureRBACStuff(db); err != nil {
-		return err
-	}
-
-	// ensure database Service
-	vt1, err := c.ensureService(db)
-	if err != nil {
+	if err := c.ensureService(db); err != nil {
 		return err
 	}
 
@@ -100,26 +85,9 @@ func (c *Controller) create(db *api.MariaDB) error {
 		return err
 	}
 
-	// ensure database StatefulSet
-	vt2, err := c.ensureMariaDB(db)
+	_, err := c.ensureStatefulSet(db)
 	if err != nil {
 		return err
-	}
-
-	if vt1 == kutil.VerbCreated && vt2 == kutil.VerbCreated {
-		c.Recorder.Event(
-			db,
-			core.EventTypeNormal,
-			eventer.EventReasonSuccessful,
-			"Successfully created MariaDB",
-		)
-	} else if vt1 == kutil.VerbPatched || vt2 == kutil.VerbPatched {
-		c.Recorder.Event(
-			db,
-			core.EventTypeNormal,
-			eventer.EventReasonSuccessful,
-			"Successfully patched MariaDB",
-		)
 	}
 
 	_, err = c.ensureAppBinding(db)
@@ -145,19 +113,38 @@ func (c *Controller) create(db *api.MariaDB) error {
 			// Rest of the processing will execute after the the restore process completed. So, just return for now.
 			return nil
 		}
+
+		//======================== Wait for initialize script =====================================
+		if db.Spec.Init.Script != nil {
+			if !kmapi.HasCondition(db.Status.Conditions, api.DatabaseProvisioned) &&
+				!kmapi.HasCondition(db.Status.Conditions, api.DatabaseDataRestored) &&
+				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReplicaReady) &&
+				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseAcceptingConnection) &&
+				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReady) {
+				_, err := util.UpdateMariaDBStatus(
+					context.TODO(),
+					c.DBClient.KubedbV1alpha2(),
+					db.ObjectMeta,
+					func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+						in.Conditions = kmapi.SetCondition(in.Conditions,
+							kmapi.Condition{
+								Type:               api.DatabaseDataRestored,
+								Status:             core.ConditionTrue,
+								Reason:             api.DatabaseSuccessfullyRestored,
+								ObservedGeneration: db.Generation,
+								Message:            fmt.Sprintf("Data successfully restored into The MySQL databse: %s/%s", db.Namespace, db.Name),
+							})
+						return db.UID, in
+					},
+					metav1.UpdateOptions{},
+				)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
-	per, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
-		in.Phase = api.DatabasePhaseReady
-		in.ObservedGeneration = db.Generation
-		return db.UID, in
-	}, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	db.Status = per.Status
-
-	// ensure StatsService for desired monitoring
 	if _, err := c.ensureStatsService(db); err != nil {
 		c.Recorder.Eventf(
 			db,
@@ -180,6 +167,57 @@ func (c *Controller) create(db *api.MariaDB) error {
 		)
 		log.Errorln(err)
 		return nil
+	}
+
+	fmt.Println(".....................................................................................1")
+	spew.Dump(db.Status.Conditions)
+	fmt.Println(".....................................................................................2")
+
+	// Check: ReplicaReady --> AcceptingConnection --> Ready --> Provisioned
+	// If spec.Init.WaitForInitialRestore is true, but data wasn't restored successfully,
+	// process won't reach here (returned nil at the beginning). As it is here, that means data was restored successfully.
+	// No need to check for IsConditionTrue(DataRestored).
+	if kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReplicaReady) &&
+		kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseAcceptingConnection) &&
+		kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReady) &&
+		!kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseProvisioned) {
+		_, err := util.UpdateMariaDBStatus(
+			context.TODO(),
+			c.DBClient.KubedbV1alpha2(),
+			db.ObjectMeta,
+			func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+				in.Conditions = kmapi.SetCondition(in.Conditions,
+					kmapi.Condition{
+						Type:               api.DatabaseProvisioned,
+						Status:             core.ConditionTrue,
+						Reason:             api.DatabaseSuccessfullyProvisioned,
+						ObservedGeneration: db.Generation,
+						Message:            fmt.Sprintf("The MariaDB: %s/%s is successfully provisioned.", db.Namespace, db.Name),
+					})
+				return db.UID, in
+			},
+			metav1.UpdateOptions{},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+
+	// If the database is successfully provisioned,
+	// Set spec.Init.Initialized to true, if init!=nil.
+	// This will prevent the operator from re-initializing the database.
+	if db.Spec.Init != nil &&
+		!db.Spec.Init.Initialized &&
+		kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseProvisioned) {
+		_, _, err := util.CreateOrPatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDB) *api.MariaDB {
+			in.Spec.Init.Initialized = true
+			return in
+		}, metav1.PatchOptions{})
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

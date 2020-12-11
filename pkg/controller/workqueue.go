@@ -18,13 +18,17 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
+	"kubedb.dev/apimachinery/pkg/phase"
 
 	"gomodules.xyz/x/log"
+	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	core_util "kmodules.xyz/client-go/core/v1"
 	"kmodules.xyz/client-go/tools/queue"
@@ -50,21 +54,21 @@ func (c *Controller) runMariaDB(key string) error {
 	} else {
 		// Note that you also have to check the uid if you have a local controlled resource, which
 		// is dependent on the actual instance, to detect that a MariaDB was recreated with the same name
-		px := obj.(*api.MariaDB).DeepCopy()
-		if px.DeletionTimestamp != nil {
-			if core_util.HasFinalizer(px.ObjectMeta, kubedb.GroupName) {
-				if err := c.terminate(px); err != nil {
+		db := obj.(*api.MariaDB).DeepCopy()
+		if db.DeletionTimestamp != nil {
+			if core_util.HasFinalizer(db.ObjectMeta, kubedb.GroupName) {
+				if err := c.terminate(db); err != nil {
 					log.Errorln(err)
 					return err
 				}
-				_, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.MariaDB) *api.MariaDB {
+				_, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), db, func(in *api.MariaDB) *api.MariaDB {
 					in.ObjectMeta = core_util.RemoveFinalizer(in.ObjectMeta, kubedb.GroupName)
 					return in
 				}, metav1.PatchOptions{})
 				return err
 			}
 		} else {
-			px, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), px, func(in *api.MariaDB) *api.MariaDB {
+			db, _, err = util.PatchMariaDB(context.TODO(), c.DBClient.KubedbV1alpha2(), db, func(in *api.MariaDB) *api.MariaDB {
 				in.ObjectMeta = core_util.AddFinalizer(in.ObjectMeta, kubedb.GroupName)
 				return in
 			}, metav1.PatchOptions{})
@@ -72,20 +76,88 @@ func (c *Controller) runMariaDB(key string) error {
 				return err
 			}
 
-			if kmapi.IsConditionTrue(px.Status.Conditions, api.DatabasePaused) {
+
+			phase := phase.PhaseFromCondition(db.Status.Conditions)
+			if db.Status.Phase != phase {
+				_, err := util.UpdateMariaDBStatus(
+					context.TODO(),
+					c.DBClient.KubedbV1alpha2(),
+					db.ObjectMeta,
+					func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+						in.Phase = phase
+						in.ObservedGeneration = db.Generation
+						return db.UID, in
+					},
+					metav1.UpdateOptions{},
+				)
+				if err != nil {
+					c.pushFailureEvent(db, err.Error())
+					return err
+				}
+				// drop the object from queue,
+				// the object will be enqueued again from this update event.
 				return nil
 			}
 
-			if px.Spec.Halted {
-				if err := c.halt(px); err != nil {
+			if !kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseProvisioningStarted) {
+				_, err := util.UpdateMariaDBStatus(
+					context.TODO(),
+					c.DBClient.KubedbV1alpha2(),
+					db.ObjectMeta,
+					func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+						in.Conditions = kmapi.SetCondition(in.Conditions,
+							kmapi.Condition{
+								Type:    api.DatabaseProvisioningStarted,
+								Status:  core.ConditionTrue,
+								Reason:  api.DatabaseProvisioningStartedSuccessfully,
+								Message: fmt.Sprintf("The KubeDB operator has started the provisioning of MariaDB: %s/%s", db.Namespace, db.Name),
+							})
+						return db.UID, in
+					},
+					metav1.UpdateOptions{},
+				)
+				if err != nil {
+					return err
+				}
+				// drop the object from queue,
+				// the object will be enqueued again from this update event.
+				return nil
+			}
+
+			if kmapi.IsConditionTrue(db.Status.Conditions, api.DatabasePaused) {
+				return nil
+			}
+
+			if db.Spec.Halted {
+				if err := c.halt(db); err != nil {
 					log.Errorln(err)
-					c.pushFailureEvent(px, err.Error())
+					c.pushFailureEvent(db, err.Error())
 					return err
 				}
 			} else {
-				if err := c.create(px); err != nil {
+
+				// Here, spec.halted=false, remove the halted condition if exists.
+				if kmapi.HasCondition(db.Status.Conditions, api.DatabaseHalted) {
+					if _, err := util.UpdateMariaDBStatus(
+						context.TODO(),
+						c.DBClient.KubedbV1alpha2(),
+						db.ObjectMeta,
+						func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+							in.Conditions = kmapi.RemoveCondition(in.Conditions, api.DatabaseHalted)
+							return db.UID, in
+						},
+						metav1.UpdateOptions{},
+					); err != nil {
+						return err
+					}
+					// return from here, will be enqueued again from the event.
+					return nil
+				}
+
+				// process db object
+				if err := c.create(db); err != nil {
 					log.Errorln(err)
-					c.pushFailureEvent(px, err.Error())
+					c.pushFailureEvent(db, err.Error())
 					return err
 				}
 			}

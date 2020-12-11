@@ -91,11 +91,11 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 	return err
 }
 
-func (c *Controller) ensureService(db *api.MariaDB) (kutil.VerbType, error) {
+func (c *Controller) ensureService(db *api.MariaDB) error {
 	// create database Service
 	vt, err := c.createPrimaryService(db)
 	if err != nil {
-		return kutil.VerbUnchanged, err
+		return err
 	} else if vt != kutil.VerbUnchanged {
 		c.Recorder.Eventf(
 			db,
@@ -105,7 +105,7 @@ func (c *Controller) ensureService(db *api.MariaDB) (kutil.VerbType, error) {
 			vt,
 		)
 	}
-	return vt, nil
+	return nil
 }
 
 func (c *Controller) createPrimaryService(db *api.MariaDB) (kutil.VerbType, error) {

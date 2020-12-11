@@ -3,7 +3,11 @@ module kubedb.dev/mariadb
 go 1.12
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
+	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-xorm/xorm v0.7.9
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator v0.42.0
 	github.com/spf13/cobra v1.1.1
