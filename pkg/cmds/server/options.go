@@ -43,6 +43,7 @@ type ExtraOptions struct {
 	QPS            float64
 	Burst          int
 	ResyncPeriod   time.Duration
+	ReadinessProbeInterval time.Duration
 	MaxNumRequeues int
 	NumThreads     int
 
@@ -52,6 +53,7 @@ type ExtraOptions struct {
 
 func NewExtraOptions() *ExtraOptions {
 	return &ExtraOptions{
+		ReadinessProbeInterval: 10 * time.Second,
 		ResyncPeriod:   10 * time.Minute,
 		MaxNumRequeues: 5,
 		NumThreads:     2,
@@ -69,6 +71,7 @@ func (s *ExtraOptions) AddGoFlags(fs *flag.FlagSet) {
 	fs.Float64Var(&s.QPS, "qps", s.QPS, "The maximum QPS to the master from this client")
 	fs.IntVar(&s.Burst, "burst", s.Burst, "The maximum burst for throttle")
 	fs.DurationVar(&s.ResyncPeriod, "resync-period", s.ResyncPeriod, "If non-zero, will re-list this often. Otherwise, re-list will be delayed aslong as possible (until the upstream source closes the watch or times out.")
+	fs.DurationVar(&s.ReadinessProbeInterval, "readiness-probe-interval", s.ReadinessProbeInterval, "The time between two consecutive health checks that the operator performs to the database.")
 
 	fs.BoolVar(&s.EnableMutatingWebhook, "enable-mutating-webhook", s.EnableMutatingWebhook, "If true, enables mutating webhooks for KubeDB CRDs.")
 	fs.BoolVar(&s.EnableValidatingWebhook, "enable-validating-webhook", s.EnableValidatingWebhook, "If true, enables validating webhooks for KubeDB CRDs.")
@@ -92,6 +95,7 @@ func (s *ExtraOptions) ApplyTo(cfg *controller.OperatorConfig) error {
 	cfg.ClientConfig.QPS = float32(s.QPS)
 	cfg.ClientConfig.Burst = s.Burst
 	cfg.ResyncPeriod = s.ResyncPeriod
+	cfg.ReadinessProbeInterval = s.ReadinessProbeInterval
 	cfg.MaxNumRequeues = s.MaxNumRequeues
 	cfg.NumThreads = s.NumThreads
 	cfg.WatchNamespace = core.NamespaceAll

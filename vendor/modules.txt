@@ -1144,6 +1144,7 @@ kmodules.xyz/webhook-runtime/admission/v1beta1
 kmodules.xyz/webhook-runtime/registry/admissionreview/v1beta1
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # kubedb.dev/apimachinery v0.15.3-0.20201216163411-d37718a20955
 =======
 # kubedb.dev/apimachinery v0.15.2-0.20201113051143-367fa125f4be
@@ -1151,6 +1152,9 @@ kmodules.xyz/webhook-runtime/registry/admissionreview/v1beta1
 =======
 # kubedb.dev/apimachinery v0.15.2-0.20201119104114-c45cc2ba5bc8
 >>>>>>> fixed cluster socket issue
+=======
+# kubedb.dev/apimachinery v0.15.3-0.20201211112716-41f5f5f7be7b
+>>>>>>> Added conditions for MariaDB
 kubedb.dev/apimachinery/apis
 kubedb.dev/apimachinery/apis/autoscaling
 kubedb.dev/apimachinery/apis/autoscaling/v1alpha1
@@ -1196,6 +1200,7 @@ kubedb.dev/apimachinery/pkg/controller
 kubedb.dev/apimachinery/pkg/controller/initializer/stash
 kubedb.dev/apimachinery/pkg/controller/statefulset
 kubedb.dev/apimachinery/pkg/eventer
+kubedb.dev/apimachinery/pkg/phase
 kubedb.dev/apimachinery/pkg/validator
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.7
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client

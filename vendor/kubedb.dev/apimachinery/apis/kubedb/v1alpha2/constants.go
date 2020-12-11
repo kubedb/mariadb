@@ -49,6 +49,7 @@ const (
 	DBCustomConfigName = "custom-config"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	DefaultCPULimit      = ".250"
 	DefaultMemoryLimit   = "512Mi"
@@ -56,6 +57,8 @@ const (
 	DefaultMemoryRequest = "256Mi"
 
 >>>>>>> changed apimachinery constants for mariadb
+=======
+>>>>>>> Added conditions for MariaDB
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
 	ElasticsearchKey = ResourceSingularElasticsearch + "." + kubedb.GroupName
@@ -164,7 +167,7 @@ const (
 	MariaDBClusterRecommendedVersion    = "10.5"
 	MariaDBMaxClusterNameLength         = 32
 	MariaDBStandaloneReplicas           = 1
-	MariaDBDefaultClusterSize           = 3
+	MariaDBDefaultClusterSize           = 2
 	MariaDBDataMountPath                = "/var/lib/mysql"
 	MariaDBDataLostFoundPath            = MariaDBDataMountPath + "lost+found"
 	MariaDBInitDBMountPath              = "/docker-entrypoint-initdb.d"

@@ -67,7 +67,7 @@ type workloadOptions struct {
 	volume         []core.Volume // volumes to mount on stsPodTemplate
 }
 
-func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
+func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) {
 	dbVersion, err := c.DBClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 	if err != nil {
 		return kutil.VerbUnchanged, err
@@ -204,7 +204,7 @@ func (c *Controller) ensureMariaDB(db *api.MariaDB) (kutil.VerbType, error) {
 		monitorContainer: &monitorContainer,
 	}
 
-	return c.ensureStatefulSet(db, opts)
+	return c.createOrPatchStatefulSet(db, opts)
 }
 
 func (c *Controller) checkStatefulSet(db *api.MariaDB, stsName string) error {
@@ -259,7 +259,7 @@ func upsertCustomConfig(
 	return template
 }
 
-func (c *Controller) ensureStatefulSet(db *api.MariaDB, opts workloadOptions) (kutil.VerbType, error) {
+func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOptions) (kutil.VerbType, error) {
 	// Take value of podTemplate
 	var pt ofst.PodTemplateSpec
 	if opts.podTemplate != nil {

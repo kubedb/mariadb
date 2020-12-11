@@ -40,10 +40,10 @@ import (
 func (c *Controller) RunHealthChecker(stopCh <-chan struct{}) {
 	// As CheckMySQLHealth() is a blocking function,
 	// run it on a go-routine.
-	go c.CheckMySQLHealth(stopCh)
+	go c.CheckMariaDBHealth(stopCh)
 }
 
-func (c *Controller) CheckMySQLHealth(stopCh <-chan struct{}) {
+func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 	glog.Info("Starting MariDB health checker...")
 
 	go wait.Until(func() {
@@ -117,7 +117,7 @@ func (c *Controller) CheckMySQLHealth(stopCh <-chan struct{}) {
 			if *db.Spec.Replicas > int32(1)  {
 				isHealthy, err = c.checkMariaDBClusterHealth(db, engine)
 				if err != nil {
-					glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
+					//glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
 				}
 			} else {
 				isHealthy, err = c.checkMariaDBStandaloneHealth(engine)
@@ -169,7 +169,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 	}
 	defer engine.Close()
 
-	// 2. check all nodes are in ONLINE
+	// 2. check all nodes are ONLINE
 	result, err := engine.QueryString("SHOW STATUS LIKE 'wsrep_cluster_size';")
 	if err != nil {
 		return false, err
@@ -192,6 +192,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, err
 	}
 	if result == nil {
+
 		return false, fmt.Errorf("wsrep_local_state_comment, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]

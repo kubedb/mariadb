@@ -85,11 +85,15 @@ func setDefaultResourceLimits(req *core.ResourceRequirements, limits, requests c
 		req.Requests = core.ResourceList{}
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Added conditions for MariaDB
 	for resource := range limits {
 		req.Limits[resource] = fn(resource, limits[resource])
 		if _, ok := req.Requests[resource]; !ok {
 			req.Requests[resource] = requests[resource]
 		}
+<<<<<<< HEAD
 =======
 	req.Limits[core.ResourceCPU] = fn(core.ResourceCPU, resource.MustParse(DefaultCPULimit))
 	if _, ok := req.Requests[core.ResourceCPU]; !ok {
@@ -99,5 +103,7 @@ func setDefaultResourceLimits(req *core.ResourceRequirements, limits, requests c
 	if _, ok := req.Requests[core.ResourceMemory]; !ok {
 		req.Requests[core.ResourceMemory] = resource.MustParse(DefaultMemoryRequest)
 >>>>>>> changed apimachinery constants for mariadb
+=======
+>>>>>>> Added conditions for MariaDB
 	}
 }
