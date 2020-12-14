@@ -76,7 +76,6 @@ func (c *Controller) runMariaDB(key string) error {
 				return err
 			}
 
-
 			phase := phase.PhaseFromCondition(db.Status.Conditions)
 			if db.Status.Phase != phase {
 				_, err := util.UpdateMariaDBStatus(

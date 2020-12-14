@@ -39,13 +39,13 @@ import (
 )
 
 type ExtraOptions struct {
-	LicenseFile    string
-	QPS            float64
-	Burst          int
-	ResyncPeriod   time.Duration
+	LicenseFile            string
+	QPS                    float64
+	Burst                  int
+	ResyncPeriod           time.Duration
 	ReadinessProbeInterval time.Duration
-	MaxNumRequeues int
-	NumThreads     int
+	MaxNumRequeues         int
+	NumThreads             int
 
 	EnableMutatingWebhook   bool
 	EnableValidatingWebhook bool
@@ -54,9 +54,9 @@ type ExtraOptions struct {
 func NewExtraOptions() *ExtraOptions {
 	return &ExtraOptions{
 		ReadinessProbeInterval: 10 * time.Second,
-		ResyncPeriod:   10 * time.Minute,
-		MaxNumRequeues: 5,
-		NumThreads:     2,
+		ResyncPeriod:           10 * time.Minute,
+		MaxNumRequeues:         5,
+		NumThreads:             2,
 		// ref: https://github.com/kubernetes/ingress-nginx/blob/e4d53786e771cc6bdd55f180674b79f5b692e552/pkg/ingress/controller/launch.go#L252-L259
 		// High enough QPS to fit all expected use cases. QPS=0 is not set here, because client code is overriding it.
 		QPS: 1e6,
