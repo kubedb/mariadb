@@ -36,7 +36,6 @@ import (
 	kmapi "kmodules.xyz/client-go/api/v1"
 )
 
-
 func (c *Controller) RunHealthChecker(stopCh <-chan struct{}) {
 	// As CheckMySQLHealth() is a blocking function,
 	// run it on a go-routine.
@@ -114,10 +113,10 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 
 			// check MariaDB database health
 			var isHealthy bool
-			if *db.Spec.Replicas > int32(1)  {
+			if *db.Spec.Replicas > int32(1) {
 				isHealthy, err = c.checkMariaDBClusterHealth(db, engine)
 				if err != nil {
-					//glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
+					glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
 				}
 			} else {
 				isHealthy, err = c.checkMariaDBStandaloneHealth(engine)
@@ -178,13 +177,12 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_cluster_size, query result is nil")
 	}
 	dbStatus, ok := result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
-	if strings.Compare(dbStatus, strconv.Itoa(int(*db.Spec.Replicas))) != 0{
+	if strings.Compare(dbStatus, strconv.Itoa(int(*db.Spec.Replicas))) != 0 {
 		return false, fmt.Errorf("all group member are not online yet")
 	}
-
 
 	// 3. Internal Galera Cluster FSM state number.
 	result, err = engine.QueryString("SHOW STATUS LIKE 'wsrep_local_state_comment';")
@@ -196,7 +194,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_local_state_comment, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
 	if strings.Compare(dbStatus, "Synced") != 0 {
@@ -212,7 +210,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_evs_state, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
 	if strings.Compare(dbStatus, "OPERATIONAL") != 0 {
@@ -229,7 +227,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_cluster_status, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
 	if strings.Compare(dbStatus, "Primary") != 0 {
@@ -245,13 +243,12 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_connected, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
 	if strings.Compare(dbStatus, "ON") != 0 {
 		return false, fmt.Errorf("all group member are not connceted")
 	}
-
 
 	// 7. Whether or not the Galera wsrep provider is ready. Possible values are ON or OFF
 	result, err = engine.QueryString("SHOW STATUS LIKE 'wsrep_ready';")
@@ -262,7 +259,7 @@ func (c *Controller) checkMariaDBClusterHealth(db *api.MariaDB, engine *xorm.Eng
 		return false, fmt.Errorf("wsrep_ready, query result is nil")
 	}
 	dbStatus, ok = result[0]["Value"]
-	if !ok  {
+	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
 	if strings.Compare(dbStatus, "ON") != 0 {

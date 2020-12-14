@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
@@ -49,7 +48,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 	}
 
 	// Ensure Service account, role, rolebinding, and PSP for database statefulsets
-	if err := c.ensureRBACStuff(db); err != nil{
+	if err := c.ensureRBACStuff(db); err != nil {
 		return err
 
 	// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
@@ -73,7 +72,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 	}
 
 	// ensure Governing Service
-	if err := c.ensureGoverningService(db); err != nil{
+	if err := c.ensureGoverningService(db); err != nil {
 		return fmt.Errorf(`failed to create governing Service for : "%v/%v". Reason: %v`, db.Namespace, db.Name, err)
 	}
 
@@ -168,11 +167,6 @@ func (c *Controller) create(db *api.MariaDB) error {
 		log.Errorln(err)
 		return nil
 	}
-
-	fmt.Println(".....................................................................................1")
-	spew.Dump(db.Status.Conditions)
-	fmt.Println(".....................................................................................2")
-
 	// Check: ReplicaReady --> AcceptingConnection --> Ready --> Provisioned
 	// If spec.Init.WaitForInitialRestore is true, but data wasn't restored successfully,
 	// process won't reach here (returned nil at the beginning). As it is here, that means data was restored successfully.
@@ -203,7 +197,6 @@ func (c *Controller) create(db *api.MariaDB) error {
 		}
 	}
 
-
 	// If the database is successfully provisioned,
 	// Set spec.Init.Initialized to true, if init!=nil.
 	// This will prevent the operator from re-initializing the database.
@@ -224,7 +217,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 }
 
 func (c *Controller) halt(db *api.MariaDB) error {
-	if db.Spec.Halted && db.Spec.TerminationPolicy != api.TerminationPolicyHalt {
+	if db.Spec.TerminationPolicy != api.TerminationPolicyHalt {
 		return errors.New("can't halt db. 'spec.terminationPolicy' is not 'Halt'")
 	}
 	log.Infof("Halting MariaDB %v/%v", db.Namespace, db.Name)
@@ -235,11 +228,41 @@ func (c *Controller) halt(db *api.MariaDB) error {
 		return err
 	}
 	log.Infof("update status of MariaDB %v/%v to Halted.", db.Namespace, db.Name)
-	if _, err := util.UpdateMariaDBStatus(context.TODO(), c.DBClient.KubedbV1alpha2(), db.ObjectMeta, func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
-		in.Phase = api.DatabasePhaseHalted
-		in.ObservedGeneration = db.Generation
-		return db.UID, in
-	}, metav1.UpdateOptions{}); err != nil {
+	if _, err := util.UpdateMariaDBStatus(
+		context.TODO(),
+		c.DBClient.KubedbV1alpha2(),
+		db.ObjectMeta,
+		func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+			in.Conditions = kmapi.SetCondition(in.Conditions, kmapi.Condition{
+				Type:               api.DatabaseHalted,
+				Status:             core.ConditionTrue,
+				Reason:             api.DatabaseHaltedSuccessfully,
+				ObservedGeneration: db.Generation,
+				Message:            fmt.Sprintf("MySQL %s/%s successfully halted.", db.Namespace, db.Name),
+			})
+			// make "AcceptingConnection" and "Ready" conditions false.
+			// Because these are handled from health checker at a certain interval,
+			// if consecutive halt and un-halt occurs in the meantime,
+			// phase might still be on the "Ready" state.
+			in.Conditions = kmapi.SetCondition(in.Conditions,
+				kmapi.Condition{
+					Type:               api.DatabaseAcceptingConnection,
+					Status:             core.ConditionFalse,
+					Reason:             api.DatabaseHaltedSuccessfully,
+					ObservedGeneration: db.Generation,
+					Message:            fmt.Sprintf("The MySQL: %s/%s is not accepting client requests.", db.Namespace, db.Name),
+				})
+			in.Conditions = kmapi.SetCondition(in.Conditions,
+				kmapi.Condition{
+					Type:               api.DatabaseReady,
+					Status:             core.ConditionFalse,
+					Reason:             api.DatabaseHaltedSuccessfully,
+					ObservedGeneration: db.Generation,
+					Message:            fmt.Sprintf("The MySQL: %s/%s is not ready.", db.Namespace, db.Name),
+				})
+			return db.UID, in
+		},
+		metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 	return nil
