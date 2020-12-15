@@ -139,9 +139,8 @@ func (c *Controller) create(db *api.MariaDB) error {
 		}
 
 		//======================== Wait for initialize script =====================================
-		if db.Spec.Init.Script != nil {
-			if !kmapi.HasCondition(db.Status.Conditions, api.DatabaseProvisioned) &&
-				!kmapi.HasCondition(db.Status.Conditions, api.DatabaseDataRestored) &&
+		if db.Spec.Init.Script != nil && !db.IsCluster() {
+			if !kmapi.HasCondition(db.Status.Conditions, api.DatabaseDataRestored) &&
 				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReplicaReady) &&
 				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseAcceptingConnection) &&
 				kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseReady) {

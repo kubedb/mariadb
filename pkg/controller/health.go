@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
@@ -52,14 +53,47 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 			return
 		}
 
+		var wg sync.WaitGroup
 		for _, db := range dbList {
+			wg.Add(1)
+			go func() {
+				defer func() {
+					wg.Done()
+				}()
+				// Create database client
+				engine, err := c.getMariaDBClient(db)
+				if err != nil {
+					// Since the client was unable to connect the database,
+					// update "AcceptingConnection" to "false".
+					// update "Ready" to "false"
+					_, err = util.UpdateMariaDBStatus(
+						context.TODO(),
+						c.DBClient.KubedbV1alpha2(),
+						db.ObjectMeta,
+						func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+							in.Conditions = kmapi.SetCondition(in.Conditions,
+								kmapi.Condition{
+									Type:               api.DatabaseAcceptingConnection,
+									Status:             core.ConditionFalse,
+									Reason:             api.DatabaseNotAcceptingConnectionRequest,
+									ObservedGeneration: db.Generation,
+									Message:            fmt.Sprintf("The MariaDB: %s/%s is not accepting client requests, reason: %s", db.Namespace, db.Name, err.Error()),
+								})
+							return db.UID, in
+						},
+						metav1.UpdateOptions{},
+					)
+					if err != nil {
+						glog.Errorf("Failed to update status for MariaDB: %s/%s", db.Namespace, db.Name)
+					}
+					// Since the client isn't created, skip rest operations.
+					return
+				}
 
-			// Create database client
-			engine, err := c.getMariaDBClient(db)
-			if err != nil {
-				// Since the client was unable to connect the database,
-				// update "AcceptingConnection" to "false".
-				// update "Ready" to "false"
+				// While creating the client, we perform a health check along with it.
+				// If the client is created without any error,
+				// the database is accepting connection.
+				// Update "AcceptingConnection" to "true".
 				_, err = util.UpdateMariaDBStatus(
 					context.TODO(),
 					c.DBClient.KubedbV1alpha2(),
@@ -68,10 +102,10 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 						in.Conditions = kmapi.SetCondition(in.Conditions,
 							kmapi.Condition{
 								Type:               api.DatabaseAcceptingConnection,
-								Status:             core.ConditionFalse,
-								Reason:             api.DatabaseNotAcceptingConnectionRequest,
+								Status:             core.ConditionTrue,
+								Reason:             api.DatabaseAcceptingConnectionRequest,
 								ObservedGeneration: db.Generation,
-								Message:            fmt.Sprintf("The MariaDB: %s/%s is not accepting client requests, reason: %s", db.Namespace, db.Name, err.Error()),
+								Message:            fmt.Sprintf("The MariaDB: %s/%s is accepting client requests.", db.Namespace, db.Name),
 							})
 						return db.UID, in
 					},
@@ -79,78 +113,52 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 				)
 				if err != nil {
 					glog.Errorf("Failed to update status for MariaDB: %s/%s", db.Namespace, db.Name)
+					// Since condition update failed, skip remaining operations.
+					return
 				}
-				// Since the client isn't created, skip rest operations.
-				continue
-			}
+				// check MariaDB database health
+				var isHealthy bool
+				if *db.Spec.Replicas > int32(1) {
+					isHealthy, err = c.checkMariaDBClusterHealth(db, engine)
+					if err != nil {
+						glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
+					}
+				} else {
+					isHealthy, err = c.checkMariaDBStandaloneHealth(engine)
+					if err != nil {
+						glog.Errorf("MariaDB standalone %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
+					}
+				}
 
-			// While creating the client, we perform a health check along with it.
-			// If the client is created without any error,
-			// the database is accepting connection.
-			// Update "AcceptingConnection" to "true".
-			_, err = util.UpdateMariaDBStatus(
-				context.TODO(),
-				c.DBClient.KubedbV1alpha2(),
-				db.ObjectMeta,
-				func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
-					in.Conditions = kmapi.SetCondition(in.Conditions,
-						kmapi.Condition{
-							Type:               api.DatabaseAcceptingConnection,
-							Status:             core.ConditionTrue,
-							Reason:             api.DatabaseAcceptingConnectionRequest,
-							ObservedGeneration: db.Generation,
-							Message:            fmt.Sprintf("The MariaDB: %s/%s is accepting client requests.", db.Namespace, db.Name),
-						})
-					return db.UID, in
-				},
-				metav1.UpdateOptions{},
-			)
-			if err != nil {
-				glog.Errorf("Failed to update status for MariaDB: %s/%s", db.Namespace, db.Name)
-				// Since condition update failed, skip remaining operations.
-				continue
-			}
-
-			// check MariaDB database health
-			var isHealthy bool
-			if *db.Spec.Replicas > int32(1) {
-				isHealthy, err = c.checkMariaDBClusterHealth(db, engine)
+				if !isHealthy {
+					// Since the get status failed, skip remaining operations.
+					return
+				}
+				// database is healthy. So update to "Ready" condition to "true"
+				_, err = util.UpdateMariaDBStatus(
+					context.TODO(),
+					c.DBClient.KubedbV1alpha2(),
+					db.ObjectMeta,
+					func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
+						in.Conditions = kmapi.SetCondition(in.Conditions,
+							kmapi.Condition{
+								Type:               api.DatabaseReady,
+								Status:             core.ConditionTrue,
+								Reason:             api.ReadinessCheckSucceeded,
+								ObservedGeneration: db.Generation,
+								Message:            fmt.Sprintf("The MySQL: %s/%s is ready.", db.Namespace, db.Name),
+							})
+						return db.UID, in
+					},
+					metav1.UpdateOptions{},
+				)
 				if err != nil {
-					glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
+					glog.Errorf("Failed to update status for MySQL: %s/%s", db.Namespace, db.Name)
 				}
-			} else {
-				isHealthy, err = c.checkMariaDBStandaloneHealth(engine)
-				if err != nil {
-					glog.Errorf("MariaDB standalone %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
-				}
-			}
 
-			if !isHealthy {
-				// Since the get status failed, skip remaining operations.
-				continue
-			}
-			// database is healthy. So update to "Ready" condition to "true"
-			_, err = util.UpdateMariaDBStatus(
-				context.TODO(),
-				c.DBClient.KubedbV1alpha2(),
-				db.ObjectMeta,
-				func(in *api.MariaDBStatus) (types.UID, *api.MariaDBStatus) {
-					in.Conditions = kmapi.SetCondition(in.Conditions,
-						kmapi.Condition{
-							Type:               api.DatabaseReady,
-							Status:             core.ConditionTrue,
-							Reason:             api.ReadinessCheckSucceeded,
-							ObservedGeneration: db.Generation,
-							Message:            fmt.Sprintf("The MySQL: %s/%s is ready.", db.Namespace, db.Name),
-						})
-					return db.UID, in
-				},
-				metav1.UpdateOptions{},
-			)
-			if err != nil {
-				glog.Errorf("Failed to update status for MySQL: %s/%s", db.Namespace, db.Name)
-			}
+			}()
 		}
+		wg.Wait()
 	}, c.ReadinessProbeInterval, stopCh)
 
 	// will wait here until stopCh is closed.
