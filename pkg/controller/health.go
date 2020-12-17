@@ -47,7 +47,7 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 	glog.Info("Starting MariDB health checker...")
 
 	go wait.Until(func() {
-		dbList, err := c.pxLister.MariaDBs(core.NamespaceAll).List(labels.Everything())
+		dbList, err := c.mdLister.MariaDBs(core.NamespaceAll).List(labels.Everything())
 		if err != nil {
 			glog.Errorf("Failed to list MariaDB objects with: %s", err.Error())
 			return
@@ -332,5 +332,5 @@ func (c *Controller) getMariaDBBasicAuth(db *api.MariaDB) (string, string, error
 }
 
 func getURL(db *api.MariaDB) string {
-	return fmt.Sprintf("%s.%s.svc", db.GoverningServiceName(), db.GetNamespace())
+	return fmt.Sprintf("%s.%s.svc", db.ServiceName(), db.GetNamespace())
 }

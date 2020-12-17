@@ -232,7 +232,7 @@ func (c *Controller) wipeOutDatabase(meta metav1.ObjectMeta, secrets []string, o
 func (c *Controller) secretsUsedByPeers(meta metav1.ObjectMeta) (sets.String, error) {
 	secretUsed := sets.NewString()
 
-	dbList, err := c.pxLister.MariaDBs(meta.Namespace).List(labels.Everything())
+	dbList, err := c.mdLister.MariaDBs(meta.Namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

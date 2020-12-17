@@ -35,15 +35,15 @@ import (
 )
 
 func (c *Controller) initWatcher() {
-	c.pxInformer = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Informer()
-	c.pxQueue = queue.New("MariaDB", c.MaxNumRequeues, c.NumThreads, c.runMariaDB)
-	c.pxLister = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Lister()
-	c.pxInformer.AddEventHandler(queue.NewChangeHandler(c.pxQueue.GetQueue()))
+	c.mdInformer = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Informer()
+	c.mdQueue = queue.New("MariaDB", c.MaxNumRequeues, c.NumThreads, c.runMariaDB)
+	c.mdLister = c.KubedbInformerFactory.Kubedb().V1alpha2().MariaDBs().Lister()
+	c.mdInformer.AddEventHandler(queue.NewChangeHandler(c.mdQueue.GetQueue()))
 }
 
 func (c *Controller) runMariaDB(key string) error {
 	log.Debugln("started processing, key:", key)
-	obj, exists, err := c.pxInformer.GetIndexer().GetByKey(key)
+	obj, exists, err := c.mdInformer.GetIndexer().GetByKey(key)
 	if err != nil {
 		log.Errorf("Fetching object with key %s from store failed with %v", key, err)
 		return err
