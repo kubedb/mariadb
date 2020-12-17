@@ -54,10 +54,18 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 		}
 
 		var wg sync.WaitGroup
-		for _, db := range dbList {
+		for idx := range dbList {
+			db := dbList[idx]
+
+			glog.Infof("Starting health check for db %s/%s", db.Namespace, db.Name)
+			if db.DeletionTimestamp != nil {
+				continue
+			}
+
 			wg.Add(1)
 			go func() {
 				defer func() {
+					glog.Infof("Ending health check for db %s/%s", db.Namespace, db.Name)
 					wg.Done()
 				}()
 				// Create database client
@@ -78,6 +86,14 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 									Reason:             api.DatabaseNotAcceptingConnectionRequest,
 									ObservedGeneration: db.Generation,
 									Message:            fmt.Sprintf("The MariaDB: %s/%s is not accepting client requests, reason: %s", db.Namespace, db.Name, err.Error()),
+								})
+							in.Conditions = kmapi.SetCondition(in.Conditions,
+								kmapi.Condition{
+									Type:               api.DatabaseReady,
+									Status:             core.ConditionFalse,
+									Reason:             api.ReadinessCheckFailed,
+									ObservedGeneration: db.Generation,
+									Message:            fmt.Sprintf("The MongoDB: %s/%s is not ready.", db.Namespace, db.Name),
 								})
 							return db.UID, in
 						},
@@ -159,6 +175,7 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 			}()
 		}
 		wg.Wait()
+		glog.Info("Ending health check loop.")
 	}, c.ReadinessProbeInterval, stopCh)
 
 	// will wait here until stopCh is closed.
