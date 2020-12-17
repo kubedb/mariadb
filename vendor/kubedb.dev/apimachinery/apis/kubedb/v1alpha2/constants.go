@@ -156,7 +156,7 @@ const (
 	MariaDBClusterRecommendedVersion    = "10.5"
 	MariaDBMaxClusterNameLength         = 32
 	MariaDBStandaloneReplicas           = 1
-	MariaDBDefaultClusterSize           = 2
+	MariaDBDefaultClusterSize           = 3
 	MariaDBDataMountPath                = "/var/lib/mysql"
 	MariaDBDataLostFoundPath            = MariaDBDataMountPath + "lost+found"
 	MariaDBInitDBMountPath              = "/docker-entrypoint-initdb.d"

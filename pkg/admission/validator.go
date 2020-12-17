@@ -151,7 +151,7 @@ func validateCluster(db *api.MariaDB) error {
 	if db.IsCluster() {
 		clusterName := db.ClusterName()
 		if len(clusterName) > api.MariaDBMaxClusterNameLength {
-			return errors.Errorf(`'spec.px.clusterName' "%s" shouldn't have more than %d characters'`,
+			return errors.Errorf(`'spec.md.clusterName' "%s" shouldn't have more than %d characters'`,
 				clusterName, api.MariaDBMaxClusterNameLength)
 		}
 		if db.Spec.Init != nil && db.Spec.Init.Script != nil {
@@ -177,12 +177,12 @@ func ValidateMariaDB(client kubernetes.Interface, extClient cs.Interface, db *ap
 	if dbVersion, err := extClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{}); err != nil {
 		return err
 	} else if db.IsCluster() && dbVersion.Spec.Version != api.MariaDBClusterRecommendedVersion {
-		return errors.Errorf("unsupported version for xtradb cluster, recommended version is %s",
+		return errors.Errorf("unsupported version for mariadb cluster, recommended version is %s",
 			api.MariaDBClusterRecommendedVersion)
 	}
 
 	if db.IsCluster() && *db.Spec.Replicas < api.MariaDBDefaultClusterSize {
-		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be %d for xtradb cluster`,
+		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be %d for mariadb cluster`,
 			db.Spec.Replicas, api.MariaDBDefaultClusterSize)
 	}
 
