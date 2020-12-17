@@ -375,6 +375,7 @@ install:
 		--set catalog.mysql=false                         \
 		--set catalog.mariadb=true                        \
 		--set catalog.pgbouncer=false                     \
+		--set catalog.perconaxtradb=false    			  \
 		--set catalog.postgres=false                      \
 		--set catalog.proxysql=false                      \
 		--set catalog.redis=false
