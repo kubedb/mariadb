@@ -58,9 +58,9 @@ type Controller struct {
 	selector metav1.LabelSelector
 
 	// MariaDB
-	pxQueue    *queue.Worker
-	pxInformer cache.SharedIndexInformer
-	pxLister   api_listers.MariaDBLister
+	mdQueue    *queue.Worker
+	mdInformer cache.SharedIndexInformer
+	mdLister   api_listers.MariaDBLister
 }
 
 func New(
@@ -114,7 +114,7 @@ func (c *Controller) Init() error {
 // RunControllers runs queue.worker
 func (c *Controller) RunControllers(stopCh <-chan struct{}) {
 	// Watch x  TPR objects
-	c.pxQueue.Run(stopCh)
+	c.mdQueue.Run(stopCh)
 	c.RunHealthChecker(stopCh)
 }
 

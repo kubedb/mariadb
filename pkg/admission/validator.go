@@ -125,15 +125,15 @@ func (a *MariaDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 				return hookapi.StatusBadRequest(err)
 			}
 
-			px := obj.(*api.MariaDB).DeepCopy()
-			oldPXC := oldObject.(*api.MariaDB).DeepCopy()
-			oldPXC.SetDefaults()
+			md := obj.(*api.MariaDB).DeepCopy()
+			oldMD := oldObject.(*api.MariaDB).DeepCopy()
+			oldMD.SetDefaults()
 			// Allow changing Database Secret only if there was no secret have set up yet.
-			if oldPXC.Spec.AuthSecret == nil {
-				oldPXC.Spec.AuthSecret = px.Spec.AuthSecret
+			if oldMD.Spec.AuthSecret == nil {
+				oldMD.Spec.AuthSecret = md.Spec.AuthSecret
 			}
 
-			if err := validateUpdate(px, oldPXC); err != nil {
+			if err := validateUpdate(md, oldMD); err != nil {
 				return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
 			}
 		}

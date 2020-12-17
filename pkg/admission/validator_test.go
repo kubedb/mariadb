@@ -59,26 +59,18 @@ func TestMariaDBValidator_Admit(t *testing.T) {
 			validator.extClient = extFake.NewSimpleClientset(
 				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.7",
+						Name: "10.5",
 					},
 					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.7",
+						Version: "10.5",
 					},
 				},
 				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.6",
+						Name: "10.4.17",
 					},
 					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.6",
-					},
-				},
-				&catalog.MariaDBVersion{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.7.25",
-					},
-					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.7.25",
+						Version: "10.4.17",
 					},
 				},
 			)
@@ -264,13 +256,13 @@ var cases = []struct {
 		true,
 	},
 
-	// XtraDB Cluster
+	// MariaDB Cluster
 	{"Create a valid MariaDB Cluster",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
-		sampleValidXtraDBCluster(),
+		sampleValidMariaDBCluster(),
 		api.MariaDB{},
 		false,
 		true,
@@ -280,7 +272,7 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Create,
-		sampleXtraDBClusterContainingInitsript(),
+		sampleMariaDBClusterContainingInitsript(),
 		api.MariaDB{},
 		false,
 		false,
@@ -341,7 +333,7 @@ func sampleMariaDB() api.MariaDB {
 			},
 		},
 		Spec: api.MariaDBSpec{
-			Version:     "5.7",
+			Version:     "10.5",
 			Replicas:    pointer.Int32P(1),
 			StorageType: api.StorageTypeDurable,
 			Storage: &core.PersistentVolumeClaimSpec{
@@ -412,7 +404,7 @@ func pauseDatabase(old api.MariaDB) api.MariaDB {
 	return old
 }
 
-func sampleXtraDBClusterContainingInitsript() api.MariaDB {
+func sampleMariaDBClusterContainingInitsript() api.MariaDB {
 	mariadb := sampleMariaDB()
 	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 	mariadb.Spec.Init = &api.InitSpec{
@@ -429,7 +421,7 @@ func sampleXtraDBClusterContainingInitsript() api.MariaDB {
 	return mariadb
 }
 
-func sampleValidXtraDBCluster() api.MariaDB {
+func sampleValidMariaDBCluster() api.MariaDB {
 	mariadb := sampleMariaDB()
 	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 	if mariadb.Spec.Init != nil {
@@ -440,14 +432,14 @@ func sampleValidXtraDBCluster() api.MariaDB {
 }
 
 func insufficientNodeReplicas() api.MariaDB {
-	mariadb := sampleValidXtraDBCluster()
+	mariadb := sampleValidMariaDBCluster()
 	mariadb.Spec.Replicas = pointer.Int32P(2)
 
 	return mariadb
 }
 
 func largerClusterNameThanRecommended() api.MariaDB {
-	mariadb := sampleValidXtraDBCluster()
+	mariadb := sampleValidMariaDBCluster()
 	mariadb.Name = "aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa"
 
 	return mariadb
