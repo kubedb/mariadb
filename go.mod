@@ -4,7 +4,6 @@ go 1.12
 
 require (
 	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe
-	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/go-xorm/xorm v0.7.9
@@ -35,15 +34,7 @@ require (
 	kmodules.xyz/objectstore-api v0.0.0-20201105133858-cbb2af88d50a
 	kmodules.xyz/offshoot-api v0.0.0-20201105074700-8675f5f686f2
 	kmodules.xyz/webhook-runtime v0.0.0-20201105073856-2dc7382b88c6
-<<<<<<< HEAD
-<<<<<<< HEAD
-	kubedb.dev/apimachinery v0.15.3-0.20201216163411-d37718a20955
-=======
-	kubedb.dev/apimachinery v0.15.2-0.20201119104114-c45cc2ba5bc8
->>>>>>> fixed cluster socket issue
-=======
 	kubedb.dev/apimachinery v0.15.3-0.20201211112716-41f5f5f7be7b
->>>>>>> Added conditions for MariaDB
 	stash.appscode.dev/apimachinery v0.11.7
 )
 

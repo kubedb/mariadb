@@ -48,17 +48,6 @@ const (
 
 	DBCustomConfigName = "custom-config"
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	DefaultCPULimit      = ".250"
-	DefaultMemoryLimit   = "512Mi"
-	DefaultCPURequest    = ".100"
-	DefaultMemoryRequest = "256Mi"
-
->>>>>>> changed apimachinery constants for mariadb
-=======
->>>>>>> Added conditions for MariaDB
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
 	ElasticsearchKey = ResourceSingularElasticsearch + "." + kubedb.GroupName

@@ -51,27 +51,6 @@ func (c *Controller) create(db *api.MariaDB) error {
 	if err := c.ensureRBACStuff(db); err != nil {
 		return err
 
-<<<<<<< HEAD:pkg/controller/mariadb.go
-	// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
-	// Then, KubeDB should create the StatefulSet using those PVCs. So, for clustering mode, we are going to
-	// wait for restore process to complete before creating the StatefulSet.
-	//======================== Wait for the initial restore =====================================
-	if db.Spec.Init != nil && db.Spec.Init.WaitForInitialRestore && db.IsCluster() {
-		// Only wait for the first restore.
-		// For initial restore, "Provisioned" condition won't exist and "DataRestored" condition either won't exist or will be "False".
-		if !kmapi.HasCondition(db.Status.Conditions, api.DatabaseProvisioned) &&
-			!kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseDataRestored) {
-			// write log indicating that the database is waiting for the data to be restored by external initializer
-			log.Infof("Database %s %s/%s is waiting for data to be restored by external initializer",
-				db.Kind,
-				db.Namespace,
-				db.Name,
-			)
-			// Rest of the processing will execute after the the restore process completed. So, just return for now.
-			return nil
-		}
-=======
->>>>>>> Added conditions for MariaDB:pkg/controller/percona_xtradb.go
 	}
 
 	// ensure Governing Service
@@ -98,24 +77,6 @@ func (c *Controller) create(db *api.MariaDB) error {
 		return err
 	}
 
-<<<<<<< HEAD:pkg/controller/mariadb.go
-	// For Standalone MariaDB (px.spec.replicas = 1),, Stash directly restore into the database.
-	// So, for standalone mode, we are going to wait for restore process to complete after creating the StatefulSet.
-	//======================== Wait for the initial restore =====================================
-	if db.Spec.Init != nil && db.Spec.Init.WaitForInitialRestore && !db.IsCluster() {
-		// Only wait for the first restore.
-		// For initial restore, "Provisioned" condition won't exist and "DataRestored" condition either won't exist or will be "False".
-		if !kmapi.HasCondition(db.Status.Conditions, api.DatabaseProvisioned) &&
-			!kmapi.IsConditionTrue(db.Status.Conditions, api.DatabaseDataRestored) {
-			// write log indicating that the database is waiting for the data to be restored by external initializer
-			log.Infof("Database %s %s/%s is waiting for data to be restored by external initializer",
-				db.Kind,
-				db.Namespace,
-				db.Name,
-			)
-			// Rest of the processing will execute after the the restore process completed. So, just return for now.
-			return nil
-=======
 	if db.Spec.Init != nil {
 		// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
 		// Then, KubeDB should create the StatefulSet using those PVCs. So, for clustering mode, we are going to
@@ -135,7 +96,6 @@ func (c *Controller) create(db *api.MariaDB) error {
 				// Rest of the processing will execute after the the restore process completed. So, just return for now.
 				return nil
 			}
->>>>>>> Added conditions for MariaDB:pkg/controller/percona_xtradb.go
 		}
 
 		//======================== Wait for initialize script =====================================

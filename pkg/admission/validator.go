@@ -50,7 +50,6 @@ type MariaDBValidator struct {
 
 var _ hookapi.AdmissionHook = &MariaDBValidator{}
 
-//TODO: modify for MariaDB
 var forbiddenEnvVars = []string{
 	"MYSQL_ROOT_PASSWORD",
 	"MYSQL_ALLOW_EMPTY_PASSWORD",
@@ -148,7 +147,6 @@ func (a *MariaDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 }
 
 // validateCluster checks whether the configurations for MariaDB Cluster are ok
-//TODO: modify for MariaDB
 func validateCluster(db *api.MariaDB) error {
 	if db.IsCluster() {
 		clusterName := db.ClusterName()
@@ -166,7 +164,6 @@ func validateCluster(db *api.MariaDB) error {
 
 // ValidateMariaDB checks if the object satisfies all the requirements.
 // It is not method of Interface, because it is referenced from controller package too.
-//TODO: modify for MariaDB
 func ValidateMariaDB(client kubernetes.Interface, extClient cs.Interface, db *api.MariaDB, strictValidation bool) error {
 	if db.Spec.Version == "" {
 		return errors.New(`'spec.version' is missing`)

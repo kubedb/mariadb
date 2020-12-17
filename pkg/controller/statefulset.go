@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	// App level options
-
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
@@ -41,6 +39,7 @@ import (
 )
 
 type workloadOptions struct {
+	// App level options
 	stsName   string
 	labels    map[string]string
 	selectors map[string]string
@@ -93,6 +92,7 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 			Resources: db.Spec.PodTemplate.Spec.Resources,
 		},
 	}
+
 	var cmds, args []string
 	var ports = []core.ContainerPort{
 		{
