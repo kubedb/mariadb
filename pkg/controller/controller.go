@@ -113,7 +113,6 @@ func (c *Controller) EnsureCustomResourceDefinitions() error {
 // Init initializes mariadb, DormantDB amd RestoreSessionForCluster watcher
 func (c *Controller) Init() error {
 	c.initWatcher()
-	// Initialize Stash initializer
 	return nil
 }
 
