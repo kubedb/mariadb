@@ -67,7 +67,7 @@ func (c *Controller) createAuthSecret(db *api.MariaDB) (*core.LocalObjectReferen
 				Name:   authSecretName,
 				Labels: db.OffshootLabels(),
 			},
-			Type: core.SecretTypeOpaque,
+			Type: core.SecretTypeBasicAuth,
 			StringData: map[string]string{
 				core.BasicAuthUsernameKey: mysqlUser,
 				core.BasicAuthPasswordKey: passgen.Generate(api.DefaultPasswordLength),
