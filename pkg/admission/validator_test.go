@@ -337,7 +337,7 @@ func sampleMariaDB() api.MariaDB {
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindMariaDB,
+				meta.NameLabelKey: api.MariaDB{}.ResourceFQN(),
 			},
 		},
 		Spec: api.MariaDBSpec{

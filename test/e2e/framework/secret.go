@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 
 	. "github.com/onsi/gomega"
@@ -202,8 +203,9 @@ func (f *Framework) DeleteSecret(meta metav1.ObjectMeta) error {
 
 func (f *Framework) EventuallyDBSecretCount(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	labelMap := map[string]string{
-		api.LabelDatabaseKind: api.ResourceKindMariaDB,
-		api.LabelDatabaseName: meta.Name,
+		meta_util.NameLabelKey:      api.MariaDB{}.ResourceFQN(),
+		meta_util.InstanceLabelKey:  meta.Name,
+		meta_util.ManagedByLabelKey: kubedb.GroupName,
 	}
 	labelSelector := labels.SelectorFromSet(labelMap)
 	return Eventually(
