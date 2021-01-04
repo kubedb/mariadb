@@ -18,6 +18,7 @@ package server
 
 import (
 	"flag"
+	"k8s.io/client-go/tools/cache"
 	"time"
 
 	cs "kubedb.dev/apimachinery/client/clientset/versioned"
@@ -36,6 +37,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"kmodules.xyz/client-go/tools/cli"
 	appcat_cs "kmodules.xyz/custom-resources/client/clientset/versioned"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type ExtraOptions struct {
@@ -122,6 +125,15 @@ func (s *ExtraOptions) ApplyTo(cfg *controller.OperatorConfig) error {
 	}
 	cfg.KubeInformerFactory = informers.NewSharedInformerFactory(cfg.KubeClient, cfg.ResyncPeriod)
 	cfg.KubedbInformerFactory = kubedbinformers.NewSharedInformerFactory(cfg.DBClient, cfg.ResyncPeriod)
+	cfg.SecretInformer = cfg.KubeInformerFactory.InformerFor(&core.Secret{}, func(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+		return coreinformers.NewSecretInformer(
+			client,
+			cfg.WatchNamespace,
+			resyncPeriod,
+			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+		)
+	})
+	cfg.SecretLister = corelisters.NewSecretLister(cfg.SecretInformer.GetIndexer())
 	// Create event recorder
 	cfg.Recorder = eventer.NewEventRecorder(cfg.KubeClient, "MariaDB operator")
 	// Initialize StatefulSet watcher

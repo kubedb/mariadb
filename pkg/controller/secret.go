@@ -21,6 +21,7 @@ import (
 	"fmt"
 	meta_util "kmodules.xyz/client-go/meta"
 
+	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
 
@@ -28,6 +29,7 @@ import (
 	core "k8s.io/api/core/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	core_util "kmodules.xyz/client-go/core/v1"
 	meta_util "kmodules.xyz/client-go/meta"
 )
@@ -118,4 +120,15 @@ func (c *Controller) checkSecret(secretName string, db *api.MariaDB) (*core.Secr
 		return nil, fmt.Errorf(`intended secret "%v/%v" already exists`, db.Namespace, secretName)
 	}
 	return secret, nil
+}
+
+func (c *Controller) mariaDBForSecret(s *core.Secret) cache.ExplicitKey {
+	ctrl := metav1.GetControllerOf(s)
+	ok, err := core_util.IsOwnerOfGroupKind(ctrl, kubedb.GroupName, api.ResourceKindMariaDB)
+	if err != nil || !ok {
+		return ""
+	}
+
+	// Owner ref is set by the enterprise operator
+	return cache.ExplicitKey(s.Namespace + "/" + ctrl.Name)
 }

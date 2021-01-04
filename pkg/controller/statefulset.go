@@ -26,6 +26,7 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
+	"github.com/fatih/structs"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
@@ -107,30 +108,59 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		cmds = []string{
 			"peer-finder",
 		}
-		userProvidedArgs := strings.Join(db.Spec.PodTemplate.Spec.Args, " ")
+
+		userProvidedArgs := db.Spec.PodTemplate.Spec.Args
+		// add ssl certs flag into args in peer-finder to configure TLS for group replication
+		if db.Spec.TLS != nil {
+			tlsArgs := []string{
+				"--ssl-capath=/etc/mysql/certs/server",
+				"--ssl-ca=/etc/mysql/certs/server/ca.crt",
+				"--ssl-cert=/etc/mysql/certs/server/tls.crt",
+				"--ssl-key=/etc/mysql/certs/server/tls.key",
+				//"--wsrep-provider-options=socket.ssl_key=/etc/mysql/certs/server/tls.key;socket.ssl_cert=/etc/mysql/certs/server/tls.crt;socket.ssl_ca=/etc/mysql/certs/server/ca.crt",
+			}
+			userProvidedArgs = append(userProvidedArgs, tlsArgs...)
+			//if db.Spec.RequireSSL {
+			//	args = append(args, "--require-secure-transport=ON ")
+			//}
+		}
 		args = []string{
 			fmt.Sprintf("-service=%s", db.GoverningServiceName()),
-			fmt.Sprintf("-on-start=/on-start.sh %s", userProvidedArgs),
+			"-on-start",
+			strings.Join(append([]string{"/on-start.sh"}, userProvidedArgs...), " "),
 		}
-		ports = append(ports, []core.ContainerPort{
-			{
-				Name:          "ist",
-				ContainerPort: 4568,
-			},
-			{
-				Name:          "sst",
-				ContainerPort: 4444,
-			},
-			{
-				Name:          "replication-tcp",
-				ContainerPort: 4567,
-			},
-			{
-				Name:          "replication-udp",
-				ContainerPort: 4567,
-				Protocol:      core.ProtocolUDP,
-			},
-		}...)
+
+		//ports = append(ports, []core.ContainerPort{
+		//	{
+		//		Name:          "ist",
+		//		ContainerPort: 4568,
+		//	},
+		//	{
+		//		Name:          "sst",
+		//		ContainerPort: 4444,
+		//	},
+		//	{
+		//		Name:          "replication-tcp",
+		//		ContainerPort: 4567,
+		//	},
+		//	{
+		//		Name:          "replication-udp",
+		//		ContainerPort: 4567,
+		//		Protocol:      core.ProtocolUDP,
+		//	},
+		//}...)
+	} else {
+		// add ssl certs flag into args to configure TLS for MariaDB standalone
+		tlsArgs := []string{
+			"--ssl-capath=/etc/mysql/certs/server",
+			"--ssl-ca=/etc/mysql/certs/server/ca.crt",
+			"--ssl-cert=/etc/mysql/certs/server/tls.crt",
+			"--ssl-key=/etc/mysql/certs/server/tls.key",
+		}
+		args = append(args, tlsArgs...)
+		//if db.Spec.RequireSSL {
+		//	args = append(args, "--require-secure-transport=ON")
+		//}
 	}
 
 	var volumes []core.Volume
@@ -158,6 +188,32 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 
 	var monitorContainer core.Container
 	if db.Spec.Monitor != nil && db.Spec.Monitor.Agent.Vendor() == mona.VendorPrometheus {
+		var commands []string
+		// pass config.my-cnf flag into exporter to configure TLS
+		if db.Spec.TLS != nil {
+			// ref: https://github.com/prometheus/mysqld_exporter#general-flags
+			// https://github.com/prometheus/mysqld_exporter#customizing-configuration-for-a-ssl-connection
+			cmd := strings.Join(append([]string{
+				"/bin/mysqld_exporter",
+				fmt.Sprintf("--web.listen-address=:%d", db.Spec.Monitor.Prometheus.Exporter.Port),
+				fmt.Sprintf("--web.telemetry-path=%v", db.StatsService().Path()),
+				"--config.my-cnf=/etc/mysql/config/exporter/exporter.cnf",
+			}, db.Spec.Monitor.Prometheus.Exporter.Args...), " ")
+			commands = []string{cmd}
+		} else {
+			// DATA_SOURCE_NAME=user:password@tcp(localhost:5555)/dbname
+			// ref: https://github.com/prometheus/mysqld_exporter#setting-the-mysql-servers-data-source-name
+			cmd := strings.Join(append([]string{
+				"/bin/mysqld_exporter",
+				fmt.Sprintf("--web.listen-address=:%d", db.Spec.Monitor.Prometheus.Exporter.Port),
+				fmt.Sprintf("--web.telemetry-path=%v", db.StatsService().Path()),
+			}, db.Spec.Monitor.Prometheus.Exporter.Args...), " ")
+			commands = []string{
+				`export DATA_SOURCE_NAME="${MYSQL_ROOT_USERNAME:-}:${MYSQL_ROOT_PASSWORD:-}@(127.0.0.1:3306)/"`,
+				cmd,
+			}
+		}
+		script := strings.Join(commands, ";")
 		monitorContainer = core.Container{
 			Name: api.ContainerExporterName,
 			Command: []string{
@@ -165,11 +221,7 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 			},
 			Args: []string{
 				"-c",
-				// DATA_SOURCE_NAME=user:password@tcp(localhost:5555)/dbname
-				// ref: https://github.com/prometheus/mysqld_exporter#setting-the-mysql-servers-data-source-name
-				fmt.Sprintf(`export DATA_SOURCE_NAME="${MYSQL_ROOT_USERNAME:-}:${MYSQL_ROOT_PASSWORD:-}@(127.0.0.1:3306)/"
-						/bin/mysqld_exporter --web.listen-address=:%v --web.telemetry-path=%v %v`,
-					db.Spec.Monitor.Prometheus.Exporter.Port, db.StatsService().Path(), strings.Join(db.Spec.Monitor.Prometheus.Exporter.Args, " ")),
+				script,
 			},
 			Image: dbVersion.Spec.Exporter.Image,
 			Ports: []core.ContainerPort{
@@ -279,7 +331,32 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 	}
 
 	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
-	statefulSet, vt, err := app_util.CreateOrPatchStatefulSet(
+
+	readinessProbe := pt.Spec.ReadinessProbe
+	if readinessProbe != nil && structs.IsZero(*readinessProbe) {
+		readinessProbe = nil
+	}
+	livenessProbe := pt.Spec.LivenessProbe
+	if livenessProbe != nil && structs.IsZero(*livenessProbe) {
+		livenessProbe = nil
+	}
+
+	if readinessProbe != nil {
+		readinessProbe.InitialDelaySeconds = 60
+		readinessProbe.PeriodSeconds = 10
+		readinessProbe.TimeoutSeconds = 50
+		readinessProbe.SuccessThreshold = 1
+		readinessProbe.FailureThreshold = 3
+	}
+	if livenessProbe != nil {
+		livenessProbe.InitialDelaySeconds = 60
+		livenessProbe.PeriodSeconds = 10
+		livenessProbe.TimeoutSeconds = 50
+		livenessProbe.SuccessThreshold = 1
+		livenessProbe.FailureThreshold = 3
+	}
+
+	_, vt, err := app_util.CreateOrPatchStatefulSet(
 		context.TODO(),
 		c.Client,
 		statefulSetMeta,
@@ -326,7 +403,7 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 
 			in.Spec.Template.Spec.Volumes = core_util.UpsertVolume(in.Spec.Template.Spec.Volumes, opts.volume...)
 			in = upsertEnv(in, db)
-			in = upsertDataVolume(in, db)
+			in = upsertVolumes(in, db)
 
 			if opts.configSecret != nil {
 				in.Spec.Template = upsertCustomConfig(in.Spec.Template, opts.configSecret, pointer.Int32(db.Spec.Replicas))
@@ -358,11 +435,7 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 		return kutil.VerbUnchanged, err
 	}
 
-	// Check StatefulSet Pod status
 	if vt != kutil.VerbUnchanged {
-		if err := c.checkStatefulSetPodStatus(statefulSet); err != nil {
-			return kutil.VerbUnchanged, err
-		}
 		c.Recorder.Eventf(
 			db,
 			core.EventTypeNormal,
@@ -375,17 +448,17 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 	return vt, nil
 }
 
-func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet {
+func upsertVolumes(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet {
+	//var volumeMounts []core.VolumeMount
+	//var volume []core.Volume
+	//var volumeClaimTemplates []core.PersistentVolumeClaim
+	// Add DataVolume
 	for i, container := range statefulSet.Spec.Template.Spec.Containers {
 		if container.Name == api.ResourceSingularMariaDB {
-			volumeMount := core.VolumeMount{
+			statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts = core_util.UpsertVolumeMount(statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts, core.VolumeMount{
 				Name:      "data",
 				MountPath: api.MariaDBDataMountPath,
-			}
-			volumeMounts := container.VolumeMounts
-			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, volumeMount)
-			statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts = volumeMounts
-
+			})
 			pvcSpec := db.Spec.Storage
 			if db.Spec.StorageType == api.StorageTypeEphemeral {
 				ed := core.EmptyDirVolumeSource{}
@@ -394,14 +467,12 @@ func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.Stat
 						ed.SizeLimit = &sz
 					}
 				}
-				statefulSet.Spec.Template.Spec.Volumes = core_util.UpsertVolume(
-					statefulSet.Spec.Template.Spec.Volumes,
-					core.Volume{
-						Name: "data",
-						VolumeSource: core.VolumeSource{
-							EmptyDir: &ed,
-						},
-					})
+				statefulSet.Spec.Template.Spec.Volumes = core_util.UpsertVolume(statefulSet.Spec.Template.Spec.Volumes, core.Volume{
+					Name: "data",
+					VolumeSource: core.VolumeSource{
+						EmptyDir: &ed,
+					},
+				})
 			} else {
 				if len(pvcSpec.AccessModes) == 0 {
 					pvcSpec.AccessModes = []core.PersistentVolumeAccessMode{
@@ -426,6 +497,142 @@ func upsertDataVolume(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.Stat
 			break
 		}
 	}
+	// upsert TLSConfig volumes
+	if db.Spec.TLS != nil {
+		statefulSet.Spec.Template.Spec.Volumes = core_util.UpsertVolume(
+			statefulSet.Spec.Template.Spec.Volumes,
+			[]core.Volume{
+				{
+					Name: "tls-server-config",
+					VolumeSource: core.VolumeSource{
+						Secret: &core.SecretVolumeSource{
+							SecretName: db.MustCertSecretName(api.MariaDBServerCert),
+							Items: []core.KeyToPath{
+								{
+									Key:  "ca.crt",
+									Path: "ca.crt",
+								},
+								{
+									Key:  "tls.crt",
+									Path: "tls.crt",
+								},
+								{
+									Key:  "tls.key",
+									Path: "tls.key",
+								},
+							},
+						},
+					},
+				},
+				{
+					Name: "tls-client-config",
+					VolumeSource: core.VolumeSource{
+						Secret: &core.SecretVolumeSource{
+							SecretName: db.MustCertSecretName(api.MariaDBArchiverCert),
+							Items: []core.KeyToPath{
+								{
+									Key:  "ca.crt",
+									Path: "ca.crt",
+								},
+								{
+									Key:  "tls.crt",
+									Path: "tls.crt",
+								},
+								{
+									Key:  "tls.key",
+									Path: "tls.key",
+								},
+							},
+						},
+					},
+				},
+				{
+					Name: "tls-exporter-config",
+					VolumeSource: core.VolumeSource{
+						Secret: &core.SecretVolumeSource{
+							SecretName: db.MustCertSecretName(api.MariaDBMetricsExporterCert),
+							Items: []core.KeyToPath{
+								{
+									Key:  "ca.crt",
+									Path: "ca.crt",
+								},
+								{
+									Key:  "tls.crt",
+									Path: "tls.crt",
+								},
+								{
+									Key:  "tls.key",
+									Path: "tls.key",
+								},
+							},
+						},
+					},
+				},
+				//{
+				//	Name: "tls-galera-replication",
+				//	VolumeSource: core.VolumeSource{
+				//		Secret: &core.SecretVolumeSource{
+				//			SecretName: meta_util.NameWithSuffix(db.Name, api.ResourceSingularMariaDB),
+				//			Items: []core.KeyToPath{
+				//				{
+				//					Key:  "replication-tls.cnf",
+				//					Path: "replication-tls.cnf",
+				//				},
+				//			},
+				//		},
+				//	},
+				//},
+
+				{
+					Name: "tls-metrics-exporter-config",
+					VolumeSource: core.VolumeSource{
+						Secret: &core.SecretVolumeSource{
+							SecretName: meta_util.NameWithSuffix(db.Name, api.MySQLMetricsExporterConfigSecretSuffix),
+							Items: []core.KeyToPath{
+								{
+									Key:  "exporter.cnf",
+									Path: "exporter.cnf",
+								},
+							},
+						},
+					},
+				},
+			}...)
+
+		for i, container := range statefulSet.Spec.Template.Spec.Containers {
+			if container.Name == api.ResourceSingularMariaDB {
+				statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts = core_util.UpsertVolumeMount(statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts,
+					[]core.VolumeMount{
+						{
+							Name:      "tls-server-config",
+							MountPath: "/etc/mysql/certs/server",
+						},
+						{
+							Name:      "tls-client-config",
+							MountPath: "/etc/mysql/certs/client",
+						},
+						//{
+						//	Name : "tls-galera-replication",
+						//	MountPath: "/etc/mysql/conf.d/galera",
+						//},
+					}...)
+			}
+			if container.Name == api.ContainerExporterName {
+				statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts = core_util.UpsertVolumeMount(statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts,
+					[]core.VolumeMount{
+						{
+							Name:      "tls-exporter-config",
+							MountPath: "/etc/mysql/certs/exporter",
+						},
+						{
+							Name:      "tls-metrics-exporter-config",
+							MountPath: "/etc/mysql/config/exporter",
+						},
+					}...)
+			}
+		}
+	}
+
 	return statefulSet
 }
 
@@ -463,18 +670,4 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 	}
 
 	return statefulSet
-}
-
-func (c *Controller) checkStatefulSetPodStatus(statefulSet *apps.StatefulSet) error {
-	err := core_util.WaitUntilPodRunningBySelector(
-		context.TODO(),
-		c.Client,
-		statefulSet.Namespace,
-		statefulSet.Spec.Selector,
-		int(pointer.Int32(statefulSet.Spec.Replicas)),
-	)
-	if err != nil {
-		return err
-	}
-	return nil
 }

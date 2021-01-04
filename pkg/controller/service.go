@@ -32,6 +32,10 @@ import (
 	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
+const (
+	galeraPort = "4567"
+)
+
 func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 	meta := metav1.ObjectMeta{
 		Name:      db.GoverningServiceName(),
@@ -68,10 +72,12 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 			{
 				Name: "replication-tcp",
 				Port: 4567,
+				TargetPort: intstr.FromString(galeraPort),
 			},
 			{
 				Name:     "replication-udp",
 				Port:     4567,
+				TargetPort: intstr.FromString(galeraPort),
 				Protocol: "UDP",
 			},
 		})

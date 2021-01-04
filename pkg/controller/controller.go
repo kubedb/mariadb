@@ -115,6 +115,7 @@ func (c *Controller) EnsureCustomResourceDefinitions() error {
 // Init initializes mariadb, DormantDB amd RestoreSessionForCluster watcher
 func (c *Controller) Init() error {
 	c.initWatcher()
+	c.initSecretWatcher()
 	return nil
 }
 

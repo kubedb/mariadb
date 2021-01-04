@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	dynamic_util "kmodules.xyz/client-go/dynamic"
+	meta_util "kmodules.xyz/client-go/meta"
 )
 
 func (c *Controller) create(db *api.MariaDB) error {
@@ -82,6 +83,27 @@ func (c *Controller) create(db *api.MariaDB) error {
 
 	if err := c.ensureAuthSecret(db); err != nil {
 		return err
+	}
+
+	// wait for certificates
+	if db.Spec.TLS != nil && db.Spec.TLS.IssuerRef != nil {
+		ok, err := dynamic_util.ResourcesExists(
+			c.DynamicClient,
+			core.SchemeGroupVersion.WithResource("secrets"),
+			db.Namespace,
+			db.MustCertSecretName(api.MariaDBServerCert),
+			db.MustCertSecretName(api.MariaDBArchiverCert),
+			db.MustCertSecretName(api.MariaDBMetricsExporterCert),
+			meta_util.NameWithSuffix(db.Name, api.ResourceSingularMariaDB),
+			meta_util.NameWithSuffix(db.Name, api.MySQLMetricsExporterConfigSecretSuffix),
+		)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			log.Infoln(fmt.Sprintf("wait for all necessary secrets for db %s/%s", db.Namespace, db.Name))
+			return nil
+		}
 	}
 
 	_, err := c.ensureStatefulSet(db)
