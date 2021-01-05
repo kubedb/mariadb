@@ -117,12 +117,12 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 				"--ssl-ca=/etc/mysql/certs/server/ca.crt",
 				"--ssl-cert=/etc/mysql/certs/server/tls.crt",
 				"--ssl-key=/etc/mysql/certs/server/tls.key",
-				//"--wsrep-provider-options=socket.ssl_key=/etc/mysql/certs/server/tls.key;socket.ssl_cert=/etc/mysql/certs/server/tls.crt;socket.ssl_ca=/etc/mysql/certs/server/ca.crt",
+				"--wsrep-provider-options='socket.ssl_key=/etc/mysql/certs/server/tls.key;socket.ssl_cert=/etc/mysql/certs/server/tls.crt;socket.ssl_ca=/etc/mysql/certs/server/ca.crt'",
 			}
 			userProvidedArgs = append(userProvidedArgs, tlsArgs...)
-			//if db.Spec.RequireSSL {
-			//	args = append(args, "--require-secure-transport=ON ")
-			//}
+			if db.Spec.RequireSSL {
+				args = append(args, "--require-secure-transport=ON ")
+			}
 		}
 		args = []string{
 			fmt.Sprintf("-service=%s", db.GoverningServiceName()),
@@ -320,10 +320,6 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 	if opts.podTemplate != nil {
 		pt = *opts.podTemplate
 	}
-	if err := c.checkStatefulSet(db, opts.stsName); err != nil {
-		return kutil.VerbUnchanged, err
-	}
-
 	// Create statefulSet for MariaDB database
 	statefulSetMeta := metav1.ObjectMeta{
 		Name:      opts.stsName,

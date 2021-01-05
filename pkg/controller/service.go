@@ -70,15 +70,15 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 				Port: 4444,
 			},
 			{
-				Name: "replication-tcp",
-				Port: 4567,
+				Name:       "replication-tcp",
+				Port:       4567,
 				TargetPort: intstr.FromString(galeraPort),
 			},
 			{
-				Name:     "replication-udp",
-				Port:     4567,
+				Name:       "replication-udp",
+				Port:       4567,
 				TargetPort: intstr.FromString(galeraPort),
-				Protocol: "UDP",
+				Protocol:   "UDP",
 			},
 		})
 
