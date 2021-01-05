@@ -59,7 +59,6 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 			{
 				Name:       api.MySQLDatabasePortName,
 				Port:       api.MySQLDatabasePort,
-				TargetPort: intstr.FromString(api.MySQLDatabasePortName),
 			},
 			{
 				Name: "ist",
@@ -72,12 +71,10 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 			{
 				Name:       "replication-tcp",
 				Port:       4567,
-				TargetPort: intstr.FromString(galeraPort),
 			},
 			{
 				Name:       "replication-udp",
 				Port:       4567,
-				TargetPort: intstr.FromString(galeraPort),
 				Protocol:   "UDP",
 			},
 		})
