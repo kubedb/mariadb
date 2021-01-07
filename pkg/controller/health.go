@@ -21,8 +21,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	sql_driver "github.com/go-sql-driver/mysql"
-	core_util "kmodules.xyz/client-go/core/v1"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +29,7 @@ import (
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
 
 	_ "github.com/go-sql-driver/mysql"
+	sql_driver "github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/xorm"
 	"github.com/golang/glog"
 	core "k8s.io/api/core/v1"
@@ -39,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kmapi "kmodules.xyz/client-go/api/v1"
+	core_util "kmodules.xyz/client-go/core/v1"
 )
 
 const (
@@ -460,15 +460,16 @@ func (c *Controller) getMariaDBClient(db *api.MariaDB, dns string, port int32) (
 	if err != nil {
 		return nil, fmt.Errorf("DB basic auth is not found for MariaDB %v/%v", db.Namespace, db.Name)
 	}
-	tlsParam := ""
+
+	tlsConfig := ""
 	if db.Spec.TLS != nil {
 		serverSecret, err := c.Client.CoreV1().Secrets(db.Namespace).Get(context.TODO(), db.MustCertSecretName(api.MariaDBServerCert), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		cacrt := serverSecret.Data["ca.crt"]
+		caCert := serverSecret.Data["ca.crt"]
 		certPool := x509.NewCertPool()
-		certPool.AppendCertsFromPEM(cacrt)
+		certPool.AppendCertsFromPEM(caCert)
 
 		// tls custom setup
 		if db.Spec.RequireSSL {
@@ -478,13 +479,12 @@ func (c *Controller) getMariaDBClient(db *api.MariaDB, dns string, port int32) (
 			if err != nil {
 				return nil, err
 			}
-			tlsParam = fmt.Sprintf("tls=%s", TLSValueCustom)
+			tlsConfig = fmt.Sprintf("tls=%s", TLSValueCustom)
 		} else {
-			tlsParam = fmt.Sprintf("tls=%s", TLSValueSkipVerify)
+			tlsConfig = fmt.Sprintf("tls=%s", TLSValueSkipVerify)
 		}
 	}
-
-	cnnstr := fmt.Sprintf("%v:%v@tcp(%s:%d)/%s?%s", user, pass, dns, port, "mysql", tlsParam)
+	cnnstr := fmt.Sprintf("%v:%v@tcp(%s:%d)/%s?%s", user, pass, getURL(db), port, "mysql", tlsConfig)
 	return xorm.NewEngine("mysql", cnnstr)
 }
 

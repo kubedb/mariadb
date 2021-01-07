@@ -32,9 +32,6 @@ import (
 	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
-const (
-	galeraPort = "4567"
-)
 
 func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 	meta := metav1.ObjectMeta{
@@ -213,3 +210,4 @@ func (c *Controller) ensureStatsService(db *api.MariaDB) (kutil.VerbType, error)
 	}
 	return vt, nil
 }
+

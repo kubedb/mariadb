@@ -31,7 +31,6 @@ import (
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kutil "kmodules.xyz/client-go"
 	app_util "kmodules.xyz/client-go/apps/v1"
@@ -96,7 +95,6 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		},
 	}
 
-	var cmds, args []string
 	var ports = []core.ContainerPort{
 		{
 			Name:          api.MySQLDatabasePortName,
@@ -104,64 +102,43 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 			Protocol:      core.ProtocolTCP,
 		},
 	}
-	if db.IsCluster() {
+
+
+	var cmds, args, tempArgs []string
+	// Adding peer-finders and user provided arguments
+	userProvidedArgs := db.Spec.PodTemplate.Spec.Args
+	if db.IsCluster(){
 		cmds = []string{
 			"peer-finder",
-		}
-
-		userProvidedArgs := db.Spec.PodTemplate.Spec.Args
-		// add ssl certs flag into args in peer-finder to configure TLS for group replication
-		if db.Spec.TLS != nil {
-			tlsArgs := []string{
-				"--ssl-capath=/etc/mysql/certs/server",
-				"--ssl-ca=/etc/mysql/certs/server/ca.crt",
-				"--ssl-cert=/etc/mysql/certs/server/tls.crt",
-				"--ssl-key=/etc/mysql/certs/server/tls.key",
-				"--wsrep-provider-options='socket.ssl_key=/etc/mysql/certs/server/tls.key;socket.ssl_cert=/etc/mysql/certs/server/tls.crt;socket.ssl_ca=/etc/mysql/certs/server/ca.crt'",
-			}
-			userProvidedArgs = append(userProvidedArgs, tlsArgs...)
-			if db.Spec.RequireSSL {
-				args = append(args, "--require-secure-transport=ON ")
-			}
 		}
 		args = []string{
 			fmt.Sprintf("-service=%s", db.GoverningServiceName()),
 			"-on-start",
-			strings.Join(append([]string{"/on-start.sh"}, userProvidedArgs...), " "),
 		}
+		tempArgs = append(tempArgs, "/on-start.sh")
+	}
 
-		//ports = append(ports, []core.ContainerPort{
-		//	{
-		//		Name:          "ist",
-		//		ContainerPort: 4568,
-		//	},
-		//	{
-		//		Name:          "sst",
-		//		ContainerPort: 4444,
-		//	},
-		//	{
-		//		Name:          "replication-tcp",
-		//		ContainerPort: 4567,
-		//	},
-		//	{
-		//		Name:          "replication-udp",
-		//		ContainerPort: 4567,
-		//		Protocol:      core.ProtocolUDP,
-		//	},
-		//}...)
-	} else {
-		// add ssl certs flag into args to configure TLS for MariaDB standalone
+	tempArgs = append(tempArgs, userProvidedArgs...)
+
+	// Adding arguments for TLS setup
+	if db.Spec.TLS != nil {
 		tlsArgs := []string{
 			"--ssl-capath=/etc/mysql/certs/server",
 			"--ssl-ca=/etc/mysql/certs/server/ca.crt",
 			"--ssl-cert=/etc/mysql/certs/server/tls.crt",
 			"--ssl-key=/etc/mysql/certs/server/tls.key",
 		}
-		args = append(args, tlsArgs...)
-		//if db.Spec.RequireSSL {
-		//	args = append(args, "--require-secure-transport=ON")
-		//}
+		if db.IsCluster() {
+			tlsArgs = append(tlsArgs, "--wsrep-provider-options='socket.ssl_key=/etc/mysql/certs/server/tls.key;socket.ssl_cert=/etc/mysql/certs/server/tls.crt;socket.ssl_ca=/etc/mysql/certs/server/ca.crt'")
+		}
+		if db.Spec.RequireSSL {
+			tlsArgs = append(tlsArgs, "--require-secure-transport=ON")
+		}
+		tempArgs = append(tempArgs, tlsArgs...)
 	}
+	args = append(args, strings.Join(tempArgs, " "))
+
+
 
 	var volumes []core.Volume
 	var volumeMounts []core.VolumeMount
@@ -564,21 +541,6 @@ func upsertVolumes(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.Statefu
 						},
 					},
 				},
-				//{
-				//	Name: "tls-galera-replication",
-				//	VolumeSource: core.VolumeSource{
-				//		Secret: &core.SecretVolumeSource{
-				//			SecretName: meta_util.NameWithSuffix(db.Name, api.ResourceSingularMariaDB),
-				//			Items: []core.KeyToPath{
-				//				{
-				//					Key:  "replication-tls.cnf",
-				//					Path: "replication-tls.cnf",
-				//				},
-				//			},
-				//		},
-				//	},
-				//},
-
 				{
 					Name: "tls-metrics-exporter-config",
 					VolumeSource: core.VolumeSource{
@@ -607,10 +569,6 @@ func upsertVolumes(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.Statefu
 							Name:      "tls-client-config",
 							MountPath: "/etc/mysql/certs/client",
 						},
-						//{
-						//	Name : "tls-galera-replication",
-						//	MountPath: "/etc/mysql/conf.d/galera",
-						//},
 					}...)
 			}
 			if container.Name == api.ContainerExporterName {
