@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 
+	meta_util "kmodules.xyz/client-go/meta"
+
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
 	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"

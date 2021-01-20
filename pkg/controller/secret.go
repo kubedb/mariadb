@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	meta_util "kmodules.xyz/client-go/meta"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"

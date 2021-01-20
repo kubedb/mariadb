@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	meta_util "kmodules.xyz/client-go/meta"
+
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
-	"github.com/fatih/structs"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
@@ -231,12 +232,13 @@ func upsertCustomConfig(
 	for i, container := range template.Spec.Containers {
 		if container.Name == api.ResourceSingularMariaDB {
 			configVolumeMount := core.VolumeMount{
-				Name:      "custom-config",
-				MountPath: api.MariaDBCustomConfigMountPath,
+				Name: "custom-config",
+				//MountPath: api.MariaDBCustomConfigMountPath,
+				MountPath: "/etc/mysql/conf.d",
 			}
-			if replicas > 1 {
-				configVolumeMount.MountPath = api.MariaDBClusterCustomConfigMountPath
-			}
+			//if replicas > 1 {
+			//	configVolumeMount.MountPath = api.MariaDBClusterCustomConfigMountPath
+			//}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, configVolumeMount)
 			template.Spec.Containers[i].VolumeMounts = volumeMounts
@@ -277,31 +279,6 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 	}
 
 	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
-
-	readinessProbe := pt.Spec.ReadinessProbe
-	if readinessProbe != nil && structs.IsZero(*readinessProbe) {
-		readinessProbe = nil
-	}
-	livenessProbe := pt.Spec.LivenessProbe
-	if livenessProbe != nil && structs.IsZero(*livenessProbe) {
-		livenessProbe = nil
-	}
-
-	if readinessProbe != nil {
-		readinessProbe.InitialDelaySeconds = 60
-		readinessProbe.PeriodSeconds = 10
-		readinessProbe.TimeoutSeconds = 50
-		readinessProbe.SuccessThreshold = 1
-		readinessProbe.FailureThreshold = 3
-	}
-	if livenessProbe != nil {
-		livenessProbe.InitialDelaySeconds = 60
-		livenessProbe.PeriodSeconds = 10
-		livenessProbe.TimeoutSeconds = 50
-		livenessProbe.SuccessThreshold = 1
-		livenessProbe.FailureThreshold = 3
-	}
-
 	statefulSet, vt, err := app_util.CreateOrPatchStatefulSet(
 		context.TODO(),
 		c.Client,
@@ -334,8 +311,6 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 					Env:             core_util.UpsertEnvVars(opts.envList, pt.Spec.Env...),
 					Resources:       pt.Spec.Resources,
 					Lifecycle:       pt.Spec.Lifecycle,
-					LivenessProbe:   livenessProbe,
-					ReadinessProbe:  readinessProbe,
 					VolumeMounts:    opts.volumeMount,
 				})
 
@@ -350,7 +325,6 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 			}
 
 			in.Spec.Template.Spec.Volumes = core_util.UpsertVolume(in.Spec.Template.Spec.Volumes, opts.volume...)
-
 			in = upsertEnv(in, db)
 			in = upsertDataVolume(in, db)
 
@@ -372,6 +346,8 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 			in.Spec.UpdateStrategy = apps.StatefulSetUpdateStrategy{
 				Type: apps.OnDeleteStatefulSetStrategyType,
 			}
+
+			in.Spec.Template.Spec.ReadinessGates = core_util.UpsertPodReadinessGateConditionType(in.Spec.Template.Spec.ReadinessGates, core_util.PodConditionTypeReady)
 
 			return in
 		},
