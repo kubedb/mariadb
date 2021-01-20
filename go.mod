@@ -3,13 +3,9 @@ module kubedb.dev/mariadb
 go 1.12
 
 require (
-	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe
-	github.com/fatih/structs v1.1.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/go-xorm/xorm v0.7.9
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/onsi/ginkgo v1.11.0
-	github.com/onsi/gomega v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator v0.42.0
 	github.com/spf13/cobra v1.1.1
@@ -26,16 +22,12 @@ require (
 	k8s.io/apimachinery v0.18.9
 	k8s.io/apiserver v0.18.9
 	k8s.io/client-go v0.18.9
-	k8s.io/kube-aggregator v0.18.9
-	kmodules.xyz/client-go v0.0.0-20201208053851-a1d7be95e006
-	kmodules.xyz/constants v0.0.0-20200923054614-6b87dbbae4d6
+	kmodules.xyz/client-go v0.0.0-20210114092027-4449ffa9981e
 	kmodules.xyz/custom-resources v0.0.0-20201124062543-bd8d35c21b0c
 	kmodules.xyz/monitoring-agent-api v0.0.0-20201105074044-be7a1044891a
-	kmodules.xyz/objectstore-api v0.0.0-20201105133858-cbb2af88d50a
 	kmodules.xyz/offshoot-api v0.0.0-20201105074700-8675f5f686f2
 	kmodules.xyz/webhook-runtime v0.0.0-20201105073856-2dc7382b88c6
-	kubedb.dev/apimachinery v0.15.3-0.20201217125128-ef7a5340c2d4
-	stash.appscode.dev/apimachinery v0.11.7
+	kubedb.dev/apimachinery v0.16.0-rc.0.0.20210119102719-39bc61a9260c
 )
 
 replace bitbucket.org/ww/goautoneg => gomodules.xyz/goautoneg v0.0.0-20120707110453-a547fc61f48d

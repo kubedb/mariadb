@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	meta_util "kmodules.xyz/client-go/meta"
 
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
 	"kubedb.dev/apimachinery/apis/kubedb"
@@ -88,7 +89,8 @@ func New(
 		promClient: promClient,
 		selector: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindMariaDB,
+				meta_util.NameLabelKey: api.MariaDB{}.ResourceFQN(),
+				meta_util.ManagedByLabelKey: kubedb.GroupName,
 			},
 		},
 	}

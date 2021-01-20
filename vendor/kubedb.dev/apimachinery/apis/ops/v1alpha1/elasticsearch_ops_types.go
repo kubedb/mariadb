@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kmapi "kmodules.xyz/client-go/api/v1"
 )
@@ -70,34 +71,65 @@ type ElasticsearchOpsRequestSpec struct {
 	Restart *RestartSpec `json:"restart,omitempty" protobuf:"bytes,9,opt,name=restart"`
 }
 
-// ElasticsearchReplicaReadinessCriteria is the criteria for checking readiness of a Elasticsearch pod
-// after updating, horizontal scaling etc.
-type ElasticsearchReplicaReadinessCriteria struct {
-}
-
 type ElasticsearchUpgradeSpec struct {
 	// Specifies the target version name from catalog
-	TargetVersion     string                                 `json:"targetVersion,omitempty" protobuf:"bytes,1,opt,name=targetVersion"`
-	ReadinessCriteria *ElasticsearchReplicaReadinessCriteria `json:"readinessCriteria,omitempty" protobuf:"bytes,2,opt,name=readinessCriteria"`
+	TargetVersion string `json:"targetVersion,omitempty" protobuf:"bytes,1,opt,name=targetVersion"`
 }
 
 // ElasticsearchHorizontalScalingSpec contains the horizontal scaling information of an Elasticsearch cluster
 type ElasticsearchHorizontalScalingSpec struct {
+	// Number of combined (i.e. master, data, ingest) node
+	Node *int32 `json:"node,omitempty" protobuf:"varint,1,opt,name=node"`
+	// Node topology specification
+	Topology *ElasticsearchHorizontalScalingTopologySpec `json:"topology,omitempty" protobuf:"bytes,2,opt,name=topology"`
+}
+
+// ElasticsearchHorizontalScalingTopologySpec contains the horizontal scaling information in cluster topology mode
+type ElasticsearchHorizontalScalingTopologySpec struct {
 	// Number of master nodes
-	Master *int32 `json:"master,omitempty" protobuf:"bytes,1,opt,name=master"`
+	Master *int32 `json:"master,omitempty" protobuf:"varint,1,opt,name=master"`
 	// Number of data nodes
-	Data *int32 `json:"data,omitempty" protobuf:"bytes,2,opt,name=data"`
-	// Number of client nodes
-	Client *int32 `json:"client,omitempty" protobuf:"bytes,3,opt,name=client"`
+	Data *int32 `json:"data,omitempty" protobuf:"varint,2,opt,name=data"`
+	// Number of ingest nodes
+	Ingest *int32 `json:"ingest,omitempty" protobuf:"varint,3,opt,name=ingest"`
 }
 
 // ElasticsearchVerticalScalingSpec is the spec for Elasticsearch vertical scaling
 type ElasticsearchVerticalScalingSpec struct {
-	ReadinessCriteria *ElasticsearchReplicaReadinessCriteria `json:"readinessCriteria,omitempty" protobuf:"bytes,1,opt,name=readinessCriteria"`
+	// Resource spec for combined nodes
+	Node *core.ResourceRequirements `json:"node,omitempty" protobuf:"bytes,1,opt,name=node"`
+	// Resource spec for exporter sidecar
+	Exporter *core.ResourceRequirements `json:"exporter,omitempty" protobuf:"bytes,2,opt,name=exporter"`
+	// Specifies the resource spec for cluster in topology mode
+	Topology *ElasticsearchVerticalScalingTopologySpec `json:"topology,omitempty" protobuf:"bytes,3,opt,name=topology"`
+}
+
+// ElasticsearchVerticalScalingTopologySpec is the resource spec in the cluster topology mode
+type ElasticsearchVerticalScalingTopologySpec struct {
+	// Resource spec for master nodes
+	Master *core.ResourceRequirements `json:"master,omitempty" protobuf:"bytes,1,opt,name=master"`
+	// Resource spec for data nodes
+	Data *core.ResourceRequirements `json:"data,omitempty" protobuf:"bytes,2,opt,name=data"`
+	// Resource spec for ingest nodes
+	Ingest *core.ResourceRequirements `json:"ingest,omitempty" protobuf:"bytes,3,opt,name=ingest"`
 }
 
 // ElasticsearchVolumeExpansionSpec is the spec for Elasticsearch volume expansion
 type ElasticsearchVolumeExpansionSpec struct {
+	// volume specification for combined nodes
+	Node *resource.Quantity `json:"node,omitempty" protobuf:"bytes,1,opt,name=node"`
+	// volume specification for nodes in cluster topology
+	Topology *ElasticsearchVolumeExpansionTopologySpec `json:"topology,omitempty" protobuf:"bytes,2,opt,name=topology"`
+}
+
+// ElasticsearchVolumeExpansionTopologySpec is the spec for Elasticsearch volume expansion in topology mode
+type ElasticsearchVolumeExpansionTopologySpec struct {
+	// volume specification for master nodes
+	Master *resource.Quantity `json:"master,omitempty" protobuf:"bytes,1,opt,name=master"`
+	// volume specification for data nodes
+	Data *resource.Quantity `json:"data,omitempty" protobuf:"bytes,2,opt,name=data"`
+	// volume specification for ingest nodes
+	Ingest *resource.Quantity `json:"ingest,omitempty" protobuf:"bytes,3,opt,name=ingest"`
 }
 
 type ElasticsearchCustomConfigurationSpec struct {

@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	meta_util "kmodules.xyz/client-go/meta"
 
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
@@ -111,8 +112,8 @@ func (c *Controller) checkSecret(secretName string, db *api.MariaDB) (*core.Secr
 		return nil, err
 	}
 
-	if secret.Labels[api.LabelDatabaseKind] != api.ResourceKindMariaDB ||
-		secret.Labels[api.LabelDatabaseName] != db.Name {
+	if secret.Labels[meta_util.NameLabelKey] != db.ResourceFQN() ||
+		secret.Labels[meta_util.InstanceLabelKey] != db.Name {
 		return nil, fmt.Errorf(`intended secret "%v/%v" already exists`, db.Namespace, secretName)
 	}
 	return secret, nil

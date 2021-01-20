@@ -29,9 +29,7 @@ const (
 
 	KubeDBOrganization = "kubedb"
 
-	LabelDatabaseKind = kubedb.GroupName + "/kind"
-	LabelDatabaseName = kubedb.GroupName + "/name"
-	LabelRole         = kubedb.GroupName + "/role"
+	LabelRole = kubedb.GroupName + "/role"
 
 	ReplicationModeDetectorContainerName = "replication-mode-detector"
 	DatabasePodPrimary                   = "primary"
@@ -46,7 +44,11 @@ const (
 	LocalHost             = "localhost"
 	LocalHostIP           = "127.0.0.1"
 
-	DBCustomConfigName = "custom-config"
+	DBCustomConfigName             = "custom-config"
+	DefaultVolumeClaimTemplateName = "data"
+
+	DBTLSVolume         = "tls-volume"
+	DBExporterTLSVolume = "exporter-tls-volume"
 
 	// =========================== Database key Constants ============================
 	PostgresKey      = ResourceSingularPostgres + "." + kubedb.GroupName
@@ -113,6 +115,12 @@ const (
 	MongoDBKeyFileSecretSuffix    = "key"
 	MongoDBRootUsername           = "root"
 	MongoDBCustomConfigFile       = "mongod.conf"
+	NodeTypeMongos                = "mongos"
+	NodeTypeShard                 = "shard"
+	NodeTypeConfig                = "configsvr"
+
+	ConfigDirectoryPath        = "/data/configdb"
+	InitialConfigDirectoryPath = "/configdb-readonly"
 
 	// =========================== MySQL Constants ============================
 	MySQLMetricsExporterConfigSecretSuffix = "metrics-exporter-config"
@@ -248,16 +256,6 @@ const (
 
 var (
 	defaultResourceLimits = core.ResourceList{
-		core.ResourceCPU:    resource.MustParse(".250"),
-		core.ResourceMemory: resource.MustParse("512Mi"),
-	}
-
-	defaultElasticsearchResourceLimits = core.ResourceList{
-		core.ResourceCPU:    resource.MustParse(".600"),
-		core.ResourceMemory: resource.MustParse("512Mi"),
-	}
-
-	defaultMySQLResourceLimits = core.ResourceList{
 		core.ResourceCPU:    resource.MustParse(".500"),
 		core.ResourceMemory: resource.MustParse("1024Mi"),
 	}
