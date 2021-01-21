@@ -103,11 +103,10 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		},
 	}
 
-
 	var cmds, args, tempArgs []string
 	// Adding peer-finders and user provided arguments
 	userProvidedArgs := db.Spec.PodTemplate.Spec.Args
-	if db.IsCluster(){
+	if db.IsCluster() {
 		cmds = []string{
 			"peer-finder",
 		}
@@ -137,8 +136,6 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		tempArgs = append(tempArgs, tlsArgs...)
 	}
 	args = append(args, strings.Join(tempArgs, " "))
-
-
 
 	var volumes []core.Volume
 	var volumeMounts []core.VolumeMount

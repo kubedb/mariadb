@@ -340,9 +340,9 @@ $(BUILD_DIRS):
 	@mkdir -p $@
 
 REGISTRY_SECRET 	?=
-KUBE_NAMESPACE  	?=
+KUBE_NAMESPACE  	?= kube-system
 LICENSE_FILE    	?=
-IMAGE_PULL_POLICY 	?= Always
+IMAGE_PULL_POLICY 	?= IfNotPresent
 
 ifeq ($(strip $(REGISTRY_SECRET)),)
 	IMAGE_PULL_SECRETS =
@@ -360,7 +360,7 @@ install:
 		--set operator.repository=mariadb-operator \
 		--set operator.tag=$(TAG)                         \
 		--set imagePullPolicy=$(IMAGE_PULL_POLICY)		  \
-		--set monitoring.enabled=true                  \
+		--set monitoring.enabled=false                  \
 		--set monitoring.agent="prometheus.io/operator" \
 		$(IMAGE_PULL_SECRETS);                            \
 	kubectl wait --for=condition=Available apiservice -l 'app.kubernetes.io/name=kubedb,app.kubernetes.io/instance=kubedb-community' --timeout=5m; \

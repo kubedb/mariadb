@@ -83,12 +83,12 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 					LabelSelector: labels.Set(db.OffshootSelectors()).String(),
 				})
 
-				if err != nil{
+				if err != nil {
 					glog.Warning("failed to list DB pod with ", err.Error())
 				}
 
 				for _, pod := range podList.Items {
-					if core_util.IsPodConditionTrue(pod.Status.Conditions, core_util.PodConditionTypeReady){
+					if core_util.IsPodConditionTrue(pod.Status.Conditions, core_util.PodConditionTypeReady) {
 						continue
 					}
 					engine, err := c.getMariaDBClient(db, getMariaDBHostDNS(db, pod.ObjectMeta), api.MySQLDatabasePort)
@@ -97,22 +97,22 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 						glog.Warning("failed to get db client for host ", pod.Namespace, "/", pod.Name)
 						return
 					}
-					func (engine *xorm.Engine){
+					func(engine *xorm.Engine) {
 						defer func() {
-							if engine != nil{
+							if engine != nil {
 								err = engine.Close()
-								if err != nil{
+								if err != nil {
 									glog.Errorf("can't close the engine. error: %v,", err)
 								}
 							}
 						}()
 						isHostOnline, err := c.isHostOnline(db, engine)
-						if err != nil{
+						if err != nil {
 							glog.Warning("host is not online ", err.Error())
 						}
 						// update pod status if specific host get online
-						if isHostOnline{
-							pod.Status.Conditions = core_util.SetPodCondition(pod.Status.Conditions, core. PodCondition{
+						if isHostOnline {
+							pod.Status.Conditions = core_util.SetPodCondition(pod.Status.Conditions, core.PodCondition{
 								Type:               core_util.PodConditionTypeReady,
 								Status:             core.ConditionTrue,
 								LastTransitionTime: metav1.Now(),
@@ -120,7 +120,7 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 								Message:            "DB is ready because of server getting Online and Running state",
 							})
 							_, err = c.Client.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), &pod, metav1.UpdateOptions{})
-							if err != nil{
+							if err != nil {
 								glog.Warning("failed to update pod status with: ", err.Error())
 							}
 						}
@@ -164,7 +164,7 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 						metav1.UpdateOptions{},
 					)
 					if err != nil {
-						glog.Errorf("Failed to update status for MariaDB: %s/%s", db.Namespace, db.Name)
+						glog.Errorf("failed to update status for MariaDB: %s/%s", db.Namespace, db.Name)
 					}
 					// Since the client isn't created, skip rest operations.
 					return
@@ -207,7 +207,7 @@ func (c *Controller) CheckMariaDBHealth(stopCh <-chan struct{}) {
 				}
 				// check MariaDB database health
 				var isHealthy bool
-				if *db.Spec.Replicas > int32(1) {
+				if db.IsCluster() {
 					isHealthy, err = c.checkMariaDBClusterHealth(db, engine)
 					if err != nil {
 						glog.Errorf("MariaDB Cluster %s/%s is not healthy, reason: %s", db.Namespace, db.Name, err.Error())
@@ -375,23 +375,23 @@ func (c *Controller) checkMariaDBStandaloneHealth(engine *xorm.Engine) (bool, er
 	return true, nil
 }
 
-func (c *Controller) isHostOnline(db *api.MariaDB, engine *xorm.Engine)(bool, error){
+func (c *Controller) isHostOnline(db *api.MariaDB, engine *xorm.Engine) (bool, error) {
 	// 1. ping database
 	_, err := engine.QueryString("SELECT 1;")
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("can't ping to mariadb server, reason: %v", err)
 	}
 
-	if db.IsCluster(){
+	if db.IsCluster() {
 		return true, nil
 	}
 
 	// 2. wsrep_local_state
 	result, err := engine.QueryString("SHOW STATUS LIKE 'wsrep_local_state';")
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
-	if result == nil{
+	if result == nil {
 		return false, fmt.Errorf("empty result on query: \"SHOW STATUS LIKE 'wsrep_local_state';\"")
 	}
 	dbStatus, ok := result[0]["Value"]
@@ -404,56 +404,54 @@ func (c *Controller) isHostOnline(db *api.MariaDB, engine *xorm.Engine)(bool, er
 
 	// 3. auto-eviction - https://galeracluster.com/library/documentation/auto-eviction.html
 	result, err = engine.QueryString("SHOW STATUS LIKE 'wsrep_evs_state';")
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
-	if result == nil{
+	if result == nil {
 		return false, fmt.Errorf("empty result on query: \"SHOW STATUS LIKE 'wsrep_evs_state';\"")
 	}
 	dbStatus, ok = result[0]["Value"]
 	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
-	if strings.Compare(dbStatus, "OPERATIONAL") != 0  {
+	if strings.Compare(dbStatus, "OPERATIONAL") != 0 {
 		return false, fmt.Errorf("expected OPERATIONAL in wsrep_evs_state, got: %s", dbStatus)
 	}
 
 	// 4. wsrep_connected
 	result, err = engine.QueryString("SHOW STATUS LIKE 'wsrep_connected';")
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
-	if result == nil{
+	if result == nil {
 		return false, fmt.Errorf("empty result on query: \"SHOW STATUS LIKE 'wsrep_connected';\"")
 	}
 	dbStatus, ok = result[0]["Value"]
 	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
-	if strings.Compare(dbStatus, "ON") != 0  {
+	if strings.Compare(dbStatus, "ON") != 0 {
 		return false, fmt.Errorf("expected ON in wsrep_connected, got: %s", dbStatus)
 	}
 
 	//5. wsrep_ready
 	result, err = engine.QueryString("SHOW STATUS LIKE 'wsrep_ready';")
-	if err != nil{
+	if err != nil {
 		return false, err
 	}
-	if result == nil{
+	if result == nil {
 		return false, fmt.Errorf("empty result on query: \"SHOW STATUS LIKE 'wsrep_ready';\"")
 	}
 	dbStatus, ok = result[0]["Value"]
 	if !ok {
 		return false, fmt.Errorf("can not read status from QueryString map")
 	}
-	if strings.Compare(dbStatus, "ON") != 0  {
+	if strings.Compare(dbStatus, "ON") != 0 {
 		return false, fmt.Errorf("expected ON in wsrep_ready, got: %s", dbStatus)
 	}
 	return true, nil
 
 }
-
-
 
 func (c *Controller) getMariaDBClient(db *api.MariaDB, dns string, port int32) (*xorm.Engine, error) {
 	user, pass, err := c.getMariaDBRootCredential(db)
@@ -484,7 +482,7 @@ func (c *Controller) getMariaDBClient(db *api.MariaDB, dns string, port int32) (
 			tlsConfig = fmt.Sprintf("tls=%s", TLSValueSkipVerify)
 		}
 	}
-	cnnstr := fmt.Sprintf("%v:%v@tcp(%s:%d)/%s?%s", user, pass, getURL(db), port, "mysql", tlsConfig)
+	cnnstr := fmt.Sprintf("%v:%v@tcp(%s:%d)/%s?%s", user, pass, dns, port, "mysql", tlsConfig)
 	return xorm.NewEngine("mysql", cnnstr)
 }
 

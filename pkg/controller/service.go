@@ -32,7 +32,6 @@ import (
 	ofst "kmodules.xyz/offshoot-api/api/v1"
 )
 
-
 func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 	meta := metav1.ObjectMeta{
 		Name:      db.GoverningServiceName(),
@@ -56,23 +55,6 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 			{
 				Name:       api.MySQLDatabasePortName,
 				Port:       api.MySQLDatabasePort,
-			},
-			{
-				Name: "ist",
-				Port: 4568,
-			},
-			{
-				Name: "sst",
-				Port: 4444,
-			},
-			{
-				Name:       "replication-tcp",
-				Port:       4567,
-			},
-			{
-				Name:       "replication-udp",
-				Port:       4567,
-				Protocol:   "UDP",
 			},
 		})
 
@@ -210,4 +192,3 @@ func (c *Controller) ensureStatsService(db *api.MariaDB) (kutil.VerbType, error)
 	}
 	return vt, nil
 }
-
