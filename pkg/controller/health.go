@@ -382,7 +382,7 @@ func (c *Controller) isHostOnline(db *api.MariaDB, engine *xorm.Engine) (bool, e
 		return false, fmt.Errorf("can't ping to mariadb server, reason: %v", err)
 	}
 
-	if db.IsCluster() {
+	if !db.IsCluster() {
 		return true, nil
 	}
 

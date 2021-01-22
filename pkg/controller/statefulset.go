@@ -26,7 +26,6 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
-	"github.com/fatih/structs"
 	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
@@ -135,7 +134,10 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		}
 		tempArgs = append(tempArgs, tlsArgs...)
 	}
-	args = append(args, strings.Join(tempArgs, " "))
+	if tempArgs != nil{
+		args = append(args, strings.Join(tempArgs, " "))
+	}
+
 
 	var volumes []core.Volume
 	var volumeMounts []core.VolumeMount
@@ -302,31 +304,8 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 
 	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
-	readinessProbe := pt.Spec.ReadinessProbe
-	if readinessProbe != nil && structs.IsZero(*readinessProbe) {
-		readinessProbe = nil
-	}
-	livenessProbe := pt.Spec.LivenessProbe
-	if livenessProbe != nil && structs.IsZero(*livenessProbe) {
-		livenessProbe = nil
-	}
 
-	if readinessProbe != nil {
-		readinessProbe.InitialDelaySeconds = 60
-		readinessProbe.PeriodSeconds = 10
-		readinessProbe.TimeoutSeconds = 50
-		readinessProbe.SuccessThreshold = 1
-		readinessProbe.FailureThreshold = 3
-	}
-	if livenessProbe != nil {
-		livenessProbe.InitialDelaySeconds = 60
-		livenessProbe.PeriodSeconds = 10
-		livenessProbe.TimeoutSeconds = 50
-		livenessProbe.SuccessThreshold = 1
-		livenessProbe.FailureThreshold = 3
-	}
-
-	_, vt, err := app_util.CreateOrPatchStatefulSet(
+	stsNew, vt, err := app_util.CreateOrPatchStatefulSet(
 		context.TODO(),
 		c.Client,
 		statefulSetMeta,
@@ -413,6 +392,10 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 			"Successfully %v StatefulSet %v/%v",
 			vt, db.Namespace, opts.stsName,
 		)
+		if err := c.CreateStatefulSetPodDisruptionBudget(stsNew); err != nil{
+			return kutil.VerbUnchanged, err
+		}
+		log.Info("successfully created/patched PodDisruptonBudget")
 	}
 
 	return vt, nil
