@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha2/util"
 	"kubedb.dev/apimachinery/pkg/eventer"
@@ -33,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	dynamic_util "kmodules.xyz/client-go/dynamic"
-	meta_util "kmodules.xyz/client-go/meta"
 )
 
 func (c *Controller) create(db *api.MariaDB) error {
@@ -91,11 +89,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 			c.DynamicClient,
 			core.SchemeGroupVersion.WithResource("secrets"),
 			db.Namespace,
-			db.MustCertSecretName(api.MariaDBServerCert),
-			db.MustCertSecretName(api.MariaDBArchiverCert),
-			db.MustCertSecretName(api.MariaDBMetricsExporterCert),
-			meta_util.NameWithSuffix(db.Name, api.ResourceSingularMariaDB),
-			meta_util.NameWithSuffix(db.Name, api.MySQLMetricsExporterConfigSecretSuffix),
+			requiredSecretList(db)...,
 		)
 		if err != nil {
 			return err

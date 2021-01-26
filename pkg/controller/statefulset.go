@@ -135,7 +135,11 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		tempArgs = append(tempArgs, tlsArgs...)
 	}
 	if tempArgs != nil{
-		args = append(args, strings.Join(tempArgs, " "))
+		if  db.IsCluster() {
+			args = append(args, strings.Join(tempArgs, " "))
+		} else {
+			args = append(args, tempArgs...)
+		}
 	}
 
 
@@ -161,7 +165,6 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 			Value: db.OffshootName(),
 		})
 	}
-
 	var monitorContainer core.Container
 	if db.Spec.Monitor != nil && db.Spec.Monitor.Agent.Vendor() == mona.VendorPrometheus {
 		var commands []string
@@ -604,4 +607,16 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 	}
 
 	return statefulSet
+}
+
+func requiredSecretList(db *api.MariaDB) []string {
+	var secretList []string
+	for _, cert := range  db.Spec.TLS.Certificates {
+		secretList = append(secretList,cert.SecretName)
+	}
+
+	if db.Spec.Monitor != nil {
+		secretList = append(secretList, meta_util.NameWithSuffix(db.Name, api.MySQLMetricsExporterConfigSecretSuffix))
+	}
+	return secretList
 }
