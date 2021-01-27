@@ -42,6 +42,27 @@ func (c *Controller) initWatcher() {
 	c.mdInformer.AddEventHandler(queue.NewChangeHandler(c.mdQueue.GetQueue()))
 }
 
+func (c *Controller) initSecretWatcher() {
+	c.SecretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if secret, ok := obj.(*core.Secret); ok {
+				if key := c.mariaDBForSecret(secret); key != "" {
+					queue.Enqueue(c.mdQueue.GetQueue(), key)
+				}
+			}
+		},
+		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
+			if secret, ok := newObj.(*core.Secret); ok {
+				if key := c.mariaDBForSecret(secret); key != "" {
+					queue.Enqueue(c.mdQueue.GetQueue(), key)
+				}
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+		},
+	})
+}
+
 func (c *Controller) runMariaDB(key string) error {
 	log.Debugln("started processing, key:", key)
 	obj, exists, err := c.mdInformer.GetIndexer().GetByKey(key)
@@ -164,25 +185,4 @@ func (c *Controller) runMariaDB(key string) error {
 		}
 	}
 	return nil
-}
-
-func (c *Controller) initSecretWatcher() {
-	c.SecretInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			if secret, ok := obj.(*core.Secret); ok {
-				if key := c.mariaDBForSecret(secret); key != "" {
-					queue.Enqueue(c.mdQueue.GetQueue(), key)
-				}
-			}
-		},
-		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
-			if secret, ok := newObj.(*core.Secret); ok {
-				if key := c.mariaDBForSecret(secret); key != "" {
-					queue.Enqueue(c.mdQueue.GetQueue(), key)
-				}
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-		},
-	})
 }

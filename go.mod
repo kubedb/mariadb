@@ -3,7 +3,6 @@ module kubedb.dev/mariadb
 go 1.12
 
 require (
-	github.com/fatih/structs v1.1.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/go-xorm/xorm v0.7.9
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -23,7 +22,7 @@ require (
 	k8s.io/apimachinery v0.18.9
 	k8s.io/apiserver v0.18.9
 	k8s.io/client-go v0.18.9
-	kmodules.xyz/client-go v0.0.0-20210114092027-4449ffa9981e
+	kmodules.xyz/client-go v0.0.0-20210118094617-273ba20ad7ca
 	kmodules.xyz/custom-resources v0.0.0-20201124062543-bd8d35c21b0c
 	kmodules.xyz/monitoring-agent-api v0.0.0-20201105074044-be7a1044891a
 	kmodules.xyz/offshoot-api v0.0.0-20201105074700-8675f5f686f2

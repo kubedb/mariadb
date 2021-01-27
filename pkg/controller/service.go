@@ -53,8 +53,8 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 		// create SRV records with pod DNS name as service provider
 		in.Spec.Ports = core_util.MergeServicePorts(in.Spec.Ports, []core.ServicePort{
 			{
-				Name:       api.MySQLDatabasePortName,
-				Port:       api.MySQLDatabasePort,
+				Name: api.MySQLDatabasePortName,
+				Port: api.MySQLDatabasePort,
 			},
 		})
 

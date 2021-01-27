@@ -134,14 +134,13 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		}
 		tempArgs = append(tempArgs, tlsArgs...)
 	}
-	if tempArgs != nil{
-		if  db.IsCluster() {
+	if tempArgs != nil {
+		if db.IsCluster() {
 			args = append(args, strings.Join(tempArgs, " "))
 		} else {
 			args = append(args, tempArgs...)
 		}
 	}
-
 
 	var volumes []core.Volume
 	var volumeMounts []core.VolumeMount
@@ -307,7 +306,6 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 
 	owner := metav1.NewControllerRef(db, api.SchemeGroupVersion.WithKind(api.ResourceKindMariaDB))
 
-
 	stsNew, vt, err := app_util.CreateOrPatchStatefulSet(
 		context.TODO(),
 		c.Client,
@@ -395,7 +393,7 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 			"Successfully %v StatefulSet %v/%v",
 			vt, db.Namespace, opts.stsName,
 		)
-		if err := c.CreateStatefulSetPodDisruptionBudget(stsNew); err != nil{
+		if err := c.CreateStatefulSetPodDisruptionBudget(stsNew); err != nil {
 			return kutil.VerbUnchanged, err
 		}
 		log.Info("successfully created/patched PodDisruptonBudget")
@@ -611,8 +609,8 @@ func upsertEnv(statefulSet *apps.StatefulSet, db *api.MariaDB) *apps.StatefulSet
 
 func requiredSecretList(db *api.MariaDB) []string {
 	var secretList []string
-	for _, cert := range  db.Spec.TLS.Certificates {
-		secretList = append(secretList,cert.SecretName)
+	for _, cert := range db.Spec.TLS.Certificates {
+		secretList = append(secretList, cert.SecretName)
 	}
 
 	if db.Spec.Monitor != nil {
