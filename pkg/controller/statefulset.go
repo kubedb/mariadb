@@ -26,7 +26,6 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
-	"gomodules.xyz/pointer"
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
@@ -258,17 +257,13 @@ func (c *Controller) checkStatefulSet(db *api.MariaDB, stsName string) error {
 }
 
 func upsertCustomConfig(
-	template core.PodTemplateSpec, configSecret *core.LocalObjectReference, replicas int32) core.PodTemplateSpec {
+	template core.PodTemplateSpec, configSecret *core.LocalObjectReference) core.PodTemplateSpec {
 	for i, container := range template.Spec.Containers {
 		if container.Name == api.ResourceSingularMariaDB {
 			configVolumeMount := core.VolumeMount{
-				Name: "custom-config",
-				//MountPath: api.MariaDBCustomConfigMountPath,
+				Name:      "custom-config",
 				MountPath: "/etc/mysql/conf.d",
 			}
-			//if replicas > 1 {
-			//	configVolumeMount.MountPath = api.MariaDBClusterCustomConfigMountPath
-			//}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, configVolumeMount)
 			template.Spec.Containers[i].VolumeMounts = volumeMounts
@@ -356,7 +351,7 @@ func (c *Controller) createOrPatchStatefulSet(db *api.MariaDB, opts workloadOpti
 			in = upsertVolumes(in, db)
 
 			if opts.configSecret != nil {
-				in.Spec.Template = upsertCustomConfig(in.Spec.Template, opts.configSecret, pointer.Int32(db.Spec.Replicas))
+				in.Spec.Template = upsertCustomConfig(in.Spec.Template, opts.configSecret)
 			}
 
 			in.Spec.Template.Spec.NodeSelector = pt.Spec.NodeSelector

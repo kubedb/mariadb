@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
+	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	extFake "kubedb.dev/apimachinery/client/clientset/versioned/fake"
 	"kubedb.dev/apimachinery/client/clientset/versioned/scheme"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	clientSetScheme "k8s.io/client-go/kubernetes/scheme"
 	"kmodules.xyz/client-go/meta"
+	meta_util "kmodules.xyz/client-go/meta"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 )
 
@@ -329,7 +331,8 @@ func sampleMariaDB() api.MariaDB {
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				meta.NameLabelKey: api.MariaDB{}.ResourceFQN(),
+				meta_util.NameLabelKey:      api.MariaDB{}.ResourceFQN(),
+				meta_util.ManagedByLabelKey: kubedb.GroupName,
 			},
 		},
 		Spec: api.MariaDBSpec{

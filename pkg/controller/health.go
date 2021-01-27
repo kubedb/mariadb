@@ -486,22 +486,6 @@ func (c *Controller) getMariaDBClient(db *api.MariaDB, dns string, port int32) (
 	return xorm.NewEngine("mysql", cnnstr)
 }
 
-func (c *Controller) getMariaDBBasicAuth(db *api.MariaDB) (string, string, error) {
-	var secretName string
-	if db.Spec.AuthSecret != nil {
-		secretName = db.GetAuthSecretName()
-	}
-	secret, err := c.Client.CoreV1().Secrets(db.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
-	if err != nil {
-		return "", "", err
-	}
-	return string(secret.Data[core.BasicAuthUsernameKey]), string(secret.Data[core.BasicAuthPasswordKey]), nil
-}
-
-func getURL(db *api.MariaDB) string {
-	return fmt.Sprintf("%s.%s.svc", db.ServiceName(), db.GetNamespace())
-}
-
 func (c *Controller) getMariaDBRootCredential(db *api.MariaDB) (string, string, error) {
 	var secretName string
 	if db.Spec.AuthSecret != nil {
