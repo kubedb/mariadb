@@ -27,7 +27,6 @@ import (
 	"gomodules.xyz/x/log"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
-	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kutil "kmodules.xyz/client-go"
 	app_util "kmodules.xyz/client-go/apps/v1"
@@ -235,24 +234,6 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 	}
 
 	return c.createOrPatchStatefulSet(db, opts)
-}
-
-func (c *Controller) checkStatefulSet(db *api.MariaDB, stsName string) error {
-	// StatefulSet for MariaDB database
-	statefulSet, err := c.Client.AppsV1().StatefulSets(db.Namespace).Get(context.TODO(), stsName, metav1.GetOptions{})
-	if err != nil {
-		if kerr.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-
-	if statefulSet.Labels[meta_util.NameLabelKey] != db.ResourceFQN() ||
-		statefulSet.Labels[meta_util.InstanceLabelKey] != db.Name {
-		return fmt.Errorf(`intended statefulSet "%v/%v" already exists`, db.Namespace, stsName)
-	}
-
-	return nil
 }
 
 func upsertCustomConfig(
