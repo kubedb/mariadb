@@ -50,7 +50,7 @@ func (c *Controller) create(db *api.MariaDB) error {
 	// Ensure Service account, role, rolebinding, and PSP for database statefulsets
 	if err := c.ensureRBACStuff(db); err != nil {
 		return err
-
+	}
 	// For MariaDB Cluster (px.spec.replicas > 1), Stash restores the data into some PVCs.
 	// Then, KubeDB should create the StatefulSet using those PVCs. So, for clustering mode, we are going to
 	// wait for restore process to complete before creating the StatefulSet.

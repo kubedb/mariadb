@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	meta_util "kmodules.xyz/client-go/meta"
 
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
@@ -47,7 +46,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	reg_util "kmodules.xyz/client-go/admissionregistration/v1beta1"
 	"kmodules.xyz/client-go/apiextensions"
-	meta_util "kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/queue"
 	appcat "kmodules.xyz/custom-resources/apis/appcatalog/v1alpha1"
 	appcat_cs "kmodules.xyz/custom-resources/client/clientset/versioned"
