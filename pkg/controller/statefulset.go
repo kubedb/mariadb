@@ -70,7 +70,7 @@ func (c *Controller) ensureStatefulSet(db *api.MariaDB) (kutil.VerbType, error) 
 		return kutil.VerbUnchanged, err
 	}
 
-	// container for removing lost and found
+	// Container for removing lost and found
 	initContainers := []core.Container{
 		{
 			Name:            "remove-lost-found",
