@@ -108,7 +108,7 @@ replace k8s.io/apimachinery => github.com/kmodules/apimachinery v0.19.0-alpha.0.
 
 replace k8s.io/apiserver => github.com/kmodules/apiserver v0.18.10-0.20200922195747-1bd1cc8f00d1
 
-replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.9
+replace k8s.io/cli-runtimeq => k8s.io/cli-runtime v0.18.9
 
 replace k8s.io/client-go => github.com/kmodules/k8s-client-go v0.18.10-0.20200922201634-73fedf3d677e
 

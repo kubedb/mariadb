@@ -1367,6 +1367,8 @@ k8s.io/apiextensions-apiserver v0.18.2/go.mod h1:q3faSnRGmYimiocj6cHQ1I3WpLqmDgJ
 k8s.io/apiextensions-apiserver v0.18.5/go.mod h1:woZ7PkEIMHjhHIyApvOwkGOkBLUYKuet0VWVkPTQ/Fs=
 k8s.io/apiextensions-apiserver v0.18.9 h1:tVEf8rVKh5BnXORnYYCztjbf6CSyGNMt/rAIEyfU00Q=
 k8s.io/apiextensions-apiserver v0.18.9/go.mod h1:JagmAhU0TVENzgUZqHJsjCSDh7YuV5o6g01G1Fwh7zI=
+k8s.io/cli-runtime v0.18.2/go.mod h1:yfFR2sQQzDsV0VEKGZtrJwEy4hLZ2oj4ZIfodgxAHWQ=
+k8s.io/cli-runtime v0.18.5/go.mod h1:uS210tk6ngtwwIJctPLs4ul1r7XlrEtwh9dA1oB700A=
 k8s.io/cli-runtime v0.18.9 h1:ko+hFWGCgB3Ue3CPB/525btshO+Sya/D4qNSZ1Nu7J8=
 k8s.io/cli-runtime v0.18.9/go.mod h1:Pw7UPmZd/wIlGd7DWGTUWA7qn92jCeybNeiS5WYJI6A=
 k8s.io/cloud-provider v0.18.9/go.mod h1:kwlWAqQK2AzQtq8zhXYRgsgia8zJVqdoonzNOUhDE4c=
