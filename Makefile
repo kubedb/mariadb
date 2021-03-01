@@ -353,11 +353,11 @@ endif
 .PHONY: install
 install:
 	@cd ../installer;                                     \
-	helm install kubedb-community charts/kubedb --wait              \
+	helm install kubedb-community charts/kubedb-community --wait              \
 		--namespace=$(KUBE_NAMESPACE)                     \
 		--set-file license=$(LICENSE_FILE)                \
 		--set operator.registry=$(REGISTRY)               \
-		--set operator.repository=mariadb-operator \
+		--set operator.repository=mariadb-operator        \
 		--set operator.tag=$(TAG)                         \
 		--set imagePullPolicy=$(IMAGE_PULL_POLICY)		  \
 		$(IMAGE_PULL_SECRETS);                            \
