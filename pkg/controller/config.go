@@ -17,6 +17,8 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+
 	"kubedb.dev/apimachinery/apis/kubedb"
 	cs "kubedb.dev/apimachinery/client/clientset/versioned"
 	amc "kubedb.dev/apimachinery/pkg/controller"
@@ -25,9 +27,11 @@ import (
 	crd_cs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	reg_util "kmodules.xyz/client-go/admissionregistration/v1beta1"
+	core_util "kmodules.xyz/client-go/core/v1"
 	"kmodules.xyz/client-go/discovery"
 	appcat_cs "kmodules.xyz/custom-resources/client/clientset/versioned"
 )
@@ -57,6 +61,11 @@ func (c *OperatorConfig) New() (*Controller, error) {
 		return nil, err
 	}
 
+	topology, err := core_util.DetectTopology(context.TODO(), metadata.NewForConfigOrDie(c.ClientConfig))
+	if err != nil {
+		return nil, err
+	}
+
 	ctrl := New(
 		c.ClientConfig,
 		c.KubeClient,
@@ -66,6 +75,7 @@ func (c *OperatorConfig) New() (*Controller, error) {
 		c.AppCatalogClient,
 		c.PromClient,
 		c.Config,
+		topology,
 		c.Recorder,
 	)
 

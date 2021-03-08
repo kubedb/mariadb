@@ -29,12 +29,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	core_util "kmodules.xyz/client-go/core/v1"
 	meta_util "kmodules.xyz/client-go/meta"
 	hookapi "kmodules.xyz/webhook-runtime/admission/v1beta1"
 )
 
 // MariaDBMutator implements the AdmissionHook interface to mutate the MariaDB resources
 type MariaDBMutator struct {
+	ClusterTopology *core_util.Topology
+
 	client      kubernetes.Interface
 	dbClient    cs.Interface
 	lock        sync.RWMutex
@@ -93,7 +96,7 @@ func (a *MariaDBMutator) Admit(req *admission.AdmissionRequest) *admission.Admis
 	if err != nil {
 		return hookapi.StatusBadRequest(err)
 	}
-	mariadbMod, err := setDefaultValues(obj.(*api.MariaDB).DeepCopy())
+	mariadbMod, err := setDefaultValues(obj.(*api.MariaDB).DeepCopy(), a.ClusterTopology)
 	if err != nil {
 		return hookapi.StatusForbidden(err)
 	} else if mariadbMod != nil {
@@ -111,7 +114,7 @@ func (a *MariaDBMutator) Admit(req *admission.AdmissionRequest) *admission.Admis
 }
 
 // setDefaultValues provides the defaulting that is performed in mutating stage of creating/updating a MySQL database
-func setDefaultValues(db *api.MariaDB) (runtime.Object, error) {
+func setDefaultValues(db *api.MariaDB, topology *core_util.Topology) (runtime.Object, error) {
 	if db.Spec.Version == "" {
 		return nil, errors.New(`'spec.version' is missing`)
 	}
@@ -123,7 +126,7 @@ func setDefaultValues(db *api.MariaDB) (runtime.Object, error) {
 		db.Spec.TerminationPolicy = api.TerminationPolicyHalt
 	}
 
-	db.SetDefaults()
+	db.SetDefaults(topology)
 
 	return db, nil
 }

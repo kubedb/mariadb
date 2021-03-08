@@ -130,15 +130,23 @@ func (c completedConfig) New() (*MariaDBServer, error) {
 		return nil, err
 	}
 
+	ctrl, err := c.OperatorConfig.New()
+	if err != nil {
+		return nil, err
+	}
+
 	if c.OperatorConfig.EnableMutatingWebhook {
 		c.ExtraConfig.AdmissionHooks = []hooks.AdmissionHook{
-			&pxAdmsn.MariaDBMutator{},
+			&pxAdmsn.MariaDBMutator{
+				ClusterTopology: ctrl.ClusterTopology,
+			},
 		}
 	}
 	if c.OperatorConfig.EnableValidatingWebhook {
 		c.ExtraConfig.AdmissionHooks = append(c.ExtraConfig.AdmissionHooks,
-			&pxAdmsn.MariaDBValidator{},
-			//&snapshot.SnapshotValidator{},
+			&pxAdmsn.MariaDBValidator{
+				ClusterTopology: ctrl.ClusterTopology,
+			},
 			&namespace.NamespaceValidator{
 				Resources: []string{api.ResourcePluralMariaDB},
 			},
@@ -146,11 +154,6 @@ func (c completedConfig) New() (*MariaDBServer, error) {
 	}
 
 	license.NewLicenseEnforcer(c.OperatorConfig.ClientConfig, c.OperatorConfig.LicenseFile).Install(genericServer.Handler.NonGoRestfulMux)
-
-	ctrl, err := c.OperatorConfig.New()
-	if err != nil {
-		return nil, err
-	}
 
 	s := &MariaDBServer{
 		GenericAPIServer: genericServer,

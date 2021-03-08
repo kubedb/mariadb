@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	catalog "kubedb.dev/apimachinery/apis/catalog/v1alpha1"
+	"kubedb.dev/apimachinery/apis/kubedb"
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	extFake "kubedb.dev/apimachinery/client/clientset/versioned/fake"
 	"kubedb.dev/apimachinery/client/clientset/versioned/scheme"
@@ -37,9 +38,24 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clientSetScheme "k8s.io/client-go/kubernetes/scheme"
+	core_util "kmodules.xyz/client-go/core/v1"
 	"kmodules.xyz/client-go/meta"
+	meta_util "kmodules.xyz/client-go/meta"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
 )
+
+var testTopology = &core_util.Topology{
+	Regions: map[string][]string{
+		"us-east-1": {"us-east-1a", "us-east-1b", "us-east-1c"},
+	},
+	TotalNodes: 100,
+	InstanceTypes: map[string]int{
+		"n1-standard-4": 100,
+	},
+	LabelZone:         core.LabelZoneFailureDomain,
+	LabelRegion:       core.LabelZoneRegion,
+	LabelInstanceType: core.LabelInstanceType,
+}
 
 var requestKind = metaV1.GroupVersionKind{
 	Group:   api.SchemeGroupVersion.Group,
@@ -53,32 +69,26 @@ func TestMariaDBValidator_Admit(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
-			validator := MariaDBValidator{}
+			validator := MariaDBValidator{
+				ClusterTopology: testTopology,
+			}
 
 			validator.initialized = true
 			validator.extClient = extFake.NewSimpleClientset(
 				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.7",
+						Name: "10.5",
 					},
 					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.7",
+						Version: "10.5",
 					},
 				},
 				&catalog.MariaDBVersion{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.6",
+						Name: "10.4.17",
 					},
 					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.6",
-					},
-				},
-				&catalog.MariaDBVersion{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "5.7.25",
-					},
-					Spec: catalog.MariaDBVersionSpec{
-						Version: "5.7.25",
+						Version: "10.4.17",
 					},
 				},
 			)
@@ -264,13 +274,13 @@ var cases = []struct {
 		true,
 	},
 
-	// XtraDB Cluster
+	// MariaDB Cluster
 	{"Create a valid MariaDB Cluster",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
-		sampleValidXtraDBCluster(),
+		sampleValidMariaDBCluster(),
 		api.MariaDB{},
 		false,
 		true,
@@ -280,7 +290,7 @@ var cases = []struct {
 		"foo",
 		"default",
 		admission.Create,
-		sampleXtraDBClusterContainingInitsript(),
+		sampleMariaDBClusterContainingInitsript(),
 		api.MariaDB{},
 		false,
 		false,
@@ -337,11 +347,12 @@ func sampleMariaDB() api.MariaDB {
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				meta.NameLabelKey: api.MariaDB{}.ResourceFQN(),
+				meta_util.NameLabelKey:      api.MariaDB{}.ResourceFQN(),
+				meta_util.ManagedByLabelKey: kubedb.GroupName,
 			},
 		},
 		Spec: api.MariaDBSpec{
-			Version:     "5.7",
+			Version:     "10.5",
 			Replicas:    pointer.Int32P(1),
 			StorageType: api.StorageTypeDurable,
 			Storage: &core.PersistentVolumeClaimSpec{
@@ -412,7 +423,7 @@ func pauseDatabase(old api.MariaDB) api.MariaDB {
 	return old
 }
 
-func sampleXtraDBClusterContainingInitsript() api.MariaDB {
+func sampleMariaDBClusterContainingInitsript() api.MariaDB {
 	mariadb := sampleMariaDB()
 	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 	mariadb.Spec.Init = &api.InitSpec{
@@ -429,7 +440,7 @@ func sampleXtraDBClusterContainingInitsript() api.MariaDB {
 	return mariadb
 }
 
-func sampleValidXtraDBCluster() api.MariaDB {
+func sampleValidMariaDBCluster() api.MariaDB {
 	mariadb := sampleMariaDB()
 	mariadb.Spec.Replicas = pointer.Int32P(api.MariaDBDefaultClusterSize)
 	if mariadb.Spec.Init != nil {
@@ -440,14 +451,14 @@ func sampleValidXtraDBCluster() api.MariaDB {
 }
 
 func insufficientNodeReplicas() api.MariaDB {
-	mariadb := sampleValidXtraDBCluster()
+	mariadb := sampleValidMariaDBCluster()
 	mariadb.Spec.Replicas = pointer.Int32P(2)
 
 	return mariadb
 }
 
 func largerClusterNameThanRecommended() api.MariaDB {
-	mariadb := sampleValidXtraDBCluster()
+	mariadb := sampleValidMariaDBCluster()
 	mariadb.Name = "aaaaa-aaaaa-aaaaa-aaaaa-aaaaa-aaaaa"
 
 	return mariadb

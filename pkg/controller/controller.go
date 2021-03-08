@@ -45,6 +45,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	reg_util "kmodules.xyz/client-go/admissionregistration/v1beta1"
 	"kmodules.xyz/client-go/apiextensions"
+	core_util "kmodules.xyz/client-go/core/v1"
 	meta_util "kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/queue"
 	appcat "kmodules.xyz/custom-resources/apis/appcatalog/v1alpha1"
@@ -61,9 +62,9 @@ type Controller struct {
 	selector metav1.LabelSelector
 
 	// MariaDB
-	pxQueue    *queue.Worker
-	pxInformer cache.SharedIndexInformer
-	pxLister   api_listers.MariaDBLister
+	mdQueue    *queue.Worker
+	mdInformer cache.SharedIndexInformer
+	mdLister   api_listers.MariaDBLister
 }
 
 func New(
@@ -75,6 +76,7 @@ func New(
 	appCatalogClient appcat_cs.Interface,
 	promClient pcm.MonitoringV1Interface,
 	opt amc.Config,
+	topology *core_util.Topology,
 	recorder record.EventRecorder,
 ) *Controller {
 	return &Controller{
@@ -86,6 +88,7 @@ func New(
 			DynamicClient:    dynamicClient,
 			AppCatalogClient: appCatalogClient,
 			Mapper:           restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.Discovery())),
+			ClusterTopology:  topology,
 			Recorder:         recorder,
 		},
 		Config:     opt,
@@ -113,13 +116,15 @@ func (c *Controller) EnsureCustomResourceDefinitions() error {
 // Init initializes mariadb, DormantDB amd RestoreSessionForCluster watcher
 func (c *Controller) Init() error {
 	c.initWatcher()
+	c.initSecretWatcher()
 	return nil
 }
 
 // RunControllers runs queue.worker
 func (c *Controller) RunControllers(stopCh <-chan struct{}) {
 	// Watch x  TPR objects
-	c.pxQueue.Run(stopCh)
+	c.mdQueue.Run(stopCh)
+	c.RunHealthChecker(stopCh)
 }
 
 // Blocks caller. Intended to be called as a Go routine.

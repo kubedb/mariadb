@@ -27,7 +27,7 @@ import (
 	api "kubedb.dev/apimachinery/apis/kubedb/v1alpha2"
 	"kubedb.dev/apimachinery/pkg/eventer"
 
-	"gomodules.xyz/pointer"
+	"github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,10 +67,10 @@ func (c *Controller) ensureAppBinding(db *api.MariaDB) (kutil.VerbType, error) {
 		return kutil.VerbUnchanged, err
 	}
 
-	appmeta := db.AppBindingMeta()
+	appBindMeta := db.AppBindingMeta()
 
 	meta := metav1.ObjectMeta{
-		Name:      appmeta.Name(),
+		Name:      appBindMeta.Name(),
 		Namespace: db.Namespace,
 	}
 
@@ -81,6 +81,20 @@ func (c *Controller) ensureAppBinding(db *api.MariaDB) (kutil.VerbType, error) {
 		return kutil.VerbUnchanged, err
 	}
 
+	var caBundle []byte
+	if db.Spec.TLS != nil {
+		certSecret, err := c.Client.CoreV1().Secrets(db.Namespace).Get(context.TODO(), db.MustCertSecretName(api.MariaDBArchiverCert), metav1.GetOptions{})
+		if err != nil {
+			return kutil.VerbUnchanged, errors.Wrapf(err, "failed to read certificate secret for MariaDB %s/%s", db.Namespace, db.Name)
+		}
+		v, ok := certSecret.Data[api.TLSCACertFileName]
+		if !ok {
+			return kutil.VerbUnchanged, errors.Errorf("ca.cert is missing in certificate secret for MariaDB %s/%s", db.Namespace, db.Name)
+		}
+		caBundle = v
+	}
+
+	clientPEMSecretName := db.Spec.AuthSecret.Name
 	dbVersion, err := c.DBClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{})
 	if err != nil {
 		return kutil.VerbUnchanged, fmt.Errorf("failed to get MariaDBVersion %v for %v/%v. Reason: %v", db.Spec.Version, db.Namespace, db.Name, err)
@@ -94,20 +108,18 @@ func (c *Controller) ensureAppBinding(db *api.MariaDB) (kutil.VerbType, error) {
 			core_util.EnsureOwnerReference(&in.ObjectMeta, owner)
 			in.Labels = db.OffshootLabels()
 			in.Annotations = meta_util.FilterKeys(kubedb.GroupName, nil, db.Annotations)
-
-			in.Spec.Type = appmeta.Type()
+			in.Spec.Type = appBindMeta.Type()
 			in.Spec.Version = dbVersion.Spec.Version
-			in.Spec.ClientConfig.URL = pointer.StringP(fmt.Sprintf("tcp(%s:%d)/", db.ServiceName(), port))
 			in.Spec.ClientConfig.Service = &appcat.ServiceReference{
 				Scheme: "mysql",
 				Name:   db.ServiceName(),
 				Port:   port,
-				Path:   "/",
 			}
+			in.Spec.ClientConfig.CABundle = caBundle
 			in.Spec.ClientConfig.InsecureSkipTLSVerify = false
 
 			in.Spec.Secret = &core.LocalObjectReference{
-				Name: db.Spec.AuthSecret.Name,
+				Name: clientPEMSecretName,
 			}
 
 			if db.IsCluster() {
@@ -115,7 +127,6 @@ func (c *Controller) ensureAppBinding(db *api.MariaDB) (kutil.VerbType, error) {
 					Raw: garbdCnfJson,
 				}
 			}
-
 			return in
 		},
 		metav1.PatchOptions{},

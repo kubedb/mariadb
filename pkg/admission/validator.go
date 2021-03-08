@@ -36,12 +36,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	core_util "kmodules.xyz/client-go/core/v1"
 	meta_util "kmodules.xyz/client-go/meta"
 	hookapi "kmodules.xyz/webhook-runtime/admission/v1beta1"
 )
 
 // MariaDBValidator implements the AdmissionHook interface to validate the MariaDB resources
 type MariaDBValidator struct {
+	ClusterTopology *core_util.Topology
+
 	client      kubernetes.Interface
 	extClient   cs.Interface
 	lock        sync.RWMutex
@@ -125,15 +128,15 @@ func (a *MariaDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 				return hookapi.StatusBadRequest(err)
 			}
 
-			px := obj.(*api.MariaDB).DeepCopy()
-			oldPXC := oldObject.(*api.MariaDB).DeepCopy()
-			oldPXC.SetDefaults()
+			md := obj.(*api.MariaDB).DeepCopy()
+			oldMD := oldObject.(*api.MariaDB).DeepCopy()
+			oldMD.SetDefaults(a.ClusterTopology)
 			// Allow changing Database Secret only if there was no secret have set up yet.
-			if oldPXC.Spec.AuthSecret == nil {
-				oldPXC.Spec.AuthSecret = px.Spec.AuthSecret
+			if oldMD.Spec.AuthSecret == nil {
+				oldMD.Spec.AuthSecret = md.Spec.AuthSecret
 			}
 
-			if err := validateUpdate(px, oldPXC); err != nil {
+			if err := validateUpdate(md, oldMD); err != nil {
 				return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
 			}
 		}
@@ -151,7 +154,7 @@ func validateCluster(db *api.MariaDB) error {
 	if db.IsCluster() {
 		clusterName := db.ClusterName()
 		if len(clusterName) > api.MariaDBMaxClusterNameLength {
-			return errors.Errorf(`'spec.px.clusterName' "%s" shouldn't have more than %d characters'`,
+			return errors.Errorf(`'spec.md.clusterName' "%s" shouldn't have more than %d characters'`,
 				clusterName, api.MariaDBMaxClusterNameLength)
 		}
 		if db.Spec.Init != nil && db.Spec.Init.Script != nil {
@@ -177,12 +180,12 @@ func ValidateMariaDB(client kubernetes.Interface, extClient cs.Interface, db *ap
 	if dbVersion, err := extClient.CatalogV1alpha1().MariaDBVersions().Get(context.TODO(), string(db.Spec.Version), metav1.GetOptions{}); err != nil {
 		return err
 	} else if db.IsCluster() && dbVersion.Spec.Version != api.MariaDBClusterRecommendedVersion {
-		return errors.Errorf("unsupported version for xtradb cluster, recommended version is %s",
+		return errors.Errorf("unsupported version for mariadb cluster, recommended version is %s",
 			api.MariaDBClusterRecommendedVersion)
 	}
 
 	if db.IsCluster() && *db.Spec.Replicas < api.MariaDBDefaultClusterSize {
-		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be %d for xtradb cluster`,
+		return fmt.Errorf(`'spec.replicas' "%v" invalid. Value must be %d for mariadb cluster`,
 			db.Spec.Replicas, api.MariaDBDefaultClusterSize)
 	}
 

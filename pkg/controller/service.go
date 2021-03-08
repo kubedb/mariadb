@@ -53,9 +53,8 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 		// create SRV records with pod DNS name as service provider
 		in.Spec.Ports = core_util.MergeServicePorts(in.Spec.Ports, []core.ServicePort{
 			{
-				Name:       api.MySQLDatabasePortName,
-				Port:       api.MySQLDatabasePort,
-				TargetPort: intstr.FromString(api.MySQLDatabasePortName),
+				Name: api.MySQLDatabasePortName,
+				Port: api.MySQLDatabasePort,
 			},
 		})
 
@@ -74,11 +73,11 @@ func (c *Controller) ensureGoverningService(db *api.MariaDB) error {
 	return err
 }
 
-func (c *Controller) ensureService(db *api.MariaDB) (kutil.VerbType, error) {
+func (c *Controller) ensureService(db *api.MariaDB) error {
 	// create database Service
 	vt, err := c.createPrimaryService(db)
 	if err != nil {
-		return kutil.VerbUnchanged, err
+		return err
 	} else if vt != kutil.VerbUnchanged {
 		c.Recorder.Eventf(
 			db,
@@ -88,7 +87,7 @@ func (c *Controller) ensureService(db *api.MariaDB) (kutil.VerbType, error) {
 			vt,
 		)
 	}
-	return vt, nil
+	return nil
 }
 
 func (c *Controller) createPrimaryService(db *api.MariaDB) (kutil.VerbType, error) {

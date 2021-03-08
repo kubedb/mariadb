@@ -26,6 +26,7 @@ import (
 	"kubedb.dev/apimachinery/apis/kubedb"
 	"kubedb.dev/apimachinery/crds"
 
+	"gomodules.xyz/pointer"
 	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -183,24 +184,48 @@ func (e *Elasticsearch) CombinedStatefulSetName() string {
 }
 
 func (e *Elasticsearch) MasterStatefulSetName() string {
-	if e.Spec.Topology.Master.Prefix != "" {
-		return fmt.Sprintf("%s-%s", e.Spec.Topology.Master.Prefix, e.OffshootName())
+	if e.Spec.Topology.Master.Suffix != "" {
+		return meta_util.NameWithSuffix(e.OffshootName(), e.Spec.Topology.Master.Suffix)
 	}
-	return fmt.Sprintf("%s-%s", ElasticsearchMasterNodePrefix, e.OffshootName())
+	return meta_util.NameWithSuffix(e.OffshootName(), ElasticsearchMasterNodeSuffix)
 }
 
 func (e *Elasticsearch) DataStatefulSetName() string {
-	if e.Spec.Topology.Data.Prefix != "" {
-		return fmt.Sprintf("%s-%s", e.Spec.Topology.Data.Prefix, e.OffshootName())
+	if e.Spec.Topology.Data.Suffix != "" {
+		return meta_util.NameWithSuffix(e.OffshootName(), e.Spec.Topology.Data.Suffix)
 	}
-	return fmt.Sprintf("%s-%s", ElasticsearchDataNodePrefix, e.OffshootName())
+	return meta_util.NameWithSuffix(e.OffshootName(), ElasticsearchDataNodeSuffix)
 }
 
 func (e *Elasticsearch) IngestStatefulSetName() string {
-	if e.Spec.Topology.Ingest.Prefix != "" {
-		return fmt.Sprintf("%s-%s", e.Spec.Topology.Ingest.Prefix, e.OffshootName())
+	if e.Spec.Topology.Ingest.Suffix != "" {
+		return meta_util.NameWithSuffix(e.OffshootName(), e.Spec.Topology.Ingest.Suffix)
 	}
-	return fmt.Sprintf("%s-%s", ElasticsearchIngestNodePrefix, e.OffshootName())
+	return meta_util.NameWithSuffix(e.OffshootName(), ElasticsearchIngestNodeSuffix)
+}
+
+func (e *Elasticsearch) InitialMasterNodes() []string {
+	// For combined clusters
+	stsName := e.CombinedStatefulSetName()
+	replicas := int32(1)
+	if e.Spec.Replicas != nil {
+		replicas = pointer.Int32(e.Spec.Replicas)
+	}
+
+	// For topology cluster, overwrite the values
+	if e.Spec.Topology != nil {
+		stsName = e.MasterStatefulSetName()
+		if e.Spec.Topology.Master.Replicas != nil {
+			replicas = pointer.Int32(e.Spec.Topology.Master.Replicas)
+		}
+	}
+
+	var nodeNames []string
+	for i := int32(0); i < replicas; i++ {
+		nodeNames = append(nodeNames, fmt.Sprintf("%s-%d", stsName, i))
+	}
+
+	return nodeNames
 }
 
 type elasticsearchApp struct {
@@ -296,24 +321,24 @@ func (e *Elasticsearch) SetDefaults(esVersion *v1alpha1.ElasticsearchVersion, to
 	if e.Spec.Topology != nil {
 
 		// Default to "ingest"
-		if e.Spec.Topology.Ingest.Prefix == "" {
-			e.Spec.Topology.Ingest.Prefix = ElasticsearchIngestNodePrefix
+		if e.Spec.Topology.Ingest.Suffix == "" {
+			e.Spec.Topology.Ingest.Suffix = ElasticsearchIngestNodeSuffix
 		}
-		setDefaultResourceLimits(&e.Spec.Topology.Ingest.Resources, defaultResourceLimits, defaultResourceLimits)
+		SetDefaultResourceLimits(&e.Spec.Topology.Ingest.Resources, DefaultResourceLimits)
 
 		// Default to "data"
-		if e.Spec.Topology.Data.Prefix == "" {
-			e.Spec.Topology.Data.Prefix = ElasticsearchDataNodePrefix
+		if e.Spec.Topology.Data.Suffix == "" {
+			e.Spec.Topology.Data.Suffix = ElasticsearchDataNodeSuffix
 		}
-		setDefaultResourceLimits(&e.Spec.Topology.Data.Resources, defaultResourceLimits, defaultResourceLimits)
+		SetDefaultResourceLimits(&e.Spec.Topology.Data.Resources, DefaultResourceLimits)
 
 		// Default to "master"
-		if e.Spec.Topology.Master.Prefix == "" {
-			e.Spec.Topology.Master.Prefix = ElasticsearchMasterNodePrefix
+		if e.Spec.Topology.Master.Suffix == "" {
+			e.Spec.Topology.Master.Suffix = ElasticsearchMasterNodeSuffix
 		}
-		setDefaultResourceLimits(&e.Spec.Topology.Master.Resources, defaultResourceLimits, defaultResourceLimits)
+		SetDefaultResourceLimits(&e.Spec.Topology.Master.Resources, DefaultResourceLimits)
 	} else {
-		setDefaultResourceLimits(&e.Spec.PodTemplate.Spec.Resources, defaultResourceLimits, defaultResourceLimits)
+		SetDefaultResourceLimits(&e.Spec.PodTemplate.Spec.Resources, DefaultResourceLimits)
 	}
 
 	// set default kernel settings
@@ -326,6 +351,15 @@ func (e *Elasticsearch) SetDefaults(esVersion *v1alpha1.ElasticsearchVersion, to
 					Name:  "vm.max_map_count",
 					Value: "262144",
 				},
+			},
+		}
+	}
+
+	if e.Spec.PodTemplate.Spec.ContainerSecurityContext == nil {
+		e.Spec.PodTemplate.Spec.ContainerSecurityContext = &core.SecurityContext{
+			Privileged: pointer.BoolP(false),
+			Capabilities: &core.Capabilities{
+				Add: []core.Capability{"IPC_LOCK", "SYS_RESOURCE"},
 			},
 		}
 	}
@@ -398,9 +432,6 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 		tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 			Alias:      string(ElasticsearchCACert),
 			SecretName: e.CertificateName(ElasticsearchCACert),
-			Subject: &kmapi.X509Subject{
-				Organizations: []string{KubeDBOrganization},
-			},
 		})
 	}
 
@@ -408,9 +439,6 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 	tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 		Alias:      string(ElasticsearchTransportCert),
 		SecretName: e.CertificateName(ElasticsearchTransportCert),
-		Subject: &kmapi.X509Subject{
-			Organizations: []string{KubeDBOrganization},
-		},
 	})
 
 	// If SSL is enabled, set missing certificate spec
@@ -419,9 +447,6 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 		tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 			Alias:      string(ElasticsearchHTTPCert),
 			SecretName: e.CertificateName(ElasticsearchHTTPCert),
-			Subject: &kmapi.X509Subject{
-				Organizations: []string{KubeDBOrganization},
-			},
 		})
 
 		// Set missing admin certificate spec, if authPlugin is either "OpenDistro" or "SearchGuard"
@@ -430,9 +455,6 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 			tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 				Alias:      string(ElasticsearchAdminCert),
 				SecretName: e.CertificateName(ElasticsearchAdminCert),
-				Subject: &kmapi.X509Subject{
-					Organizations: []string{KubeDBOrganization},
-				},
 			})
 		}
 
@@ -442,9 +464,6 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 			tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 				Alias:      string(ElasticsearchMetricsExporterCert),
 				SecretName: e.CertificateName(ElasticsearchMetricsExporterCert),
-				Subject: &kmapi.X509Subject{
-					Organizations: []string{KubeDBOrganization},
-				},
 			})
 		}
 
@@ -452,16 +471,22 @@ func (e *Elasticsearch) SetTLSDefaults(esVersion *v1alpha1.ElasticsearchVersion)
 		tlsConfig.Certificates = kmapi.SetMissingSpecForCertificate(tlsConfig.Certificates, kmapi.CertificateSpec{
 			Alias:      string(ElasticsearchArchiverCert),
 			SecretName: e.CertificateName(ElasticsearchArchiverCert),
-			Subject: &kmapi.X509Subject{
-				Organizations: []string{KubeDBOrganization},
-			},
 		})
 	}
 
-	// Force overwrite the private key encoding type to PKCS#8
 	for id := range tlsConfig.Certificates {
+		// Force overwrite the private key encoding type to PKCS#8
 		tlsConfig.Certificates[id].PrivateKey = &kmapi.CertificatePrivateKey{
 			Encoding: kmapi.PKCS8,
+		}
+		// Set default subject to O:KubeDB, if missing.
+		// It isn't set from SetMissingSpecForCertificate(),
+		// Because the default organization(ie. kubedb) gets merged, even if
+		// the organizations[] isn't empty.
+		if tlsConfig.Certificates[id].Subject == nil {
+			tlsConfig.Certificates[id].Subject = &kmapi.X509Subject{
+				Organizations: []string{KubeDBOrganization},
+			}
 		}
 	}
 

@@ -97,8 +97,8 @@ DOCKER_REPO_ROOT := /go/src/$(GO_PKG)/$(REPO)
 # If you want to build AND push all containers, see the 'all-push' rule.
 all: fmt build
 
-include Makefile.env
-include Makefile.stash
+#include Makefile.env
+#include Makefile.stash
 
 # For the following OS/ARCH expansions, we transform OS/ARCH into OS_ARCH
 # because make pattern rules don't match with embedded '/' characters.
@@ -340,9 +340,9 @@ $(BUILD_DIRS):
 	@mkdir -p $@
 
 REGISTRY_SECRET 	?=
-KUBE_NAMESPACE  	?=
+KUBE_NAMESPACE  	?= kube-system
 LICENSE_FILE    	?=
-IMAGE_PULL_POLICY 	?= Always
+IMAGE_PULL_POLICY 	?= IfNotPresent
 
 ifeq ($(strip $(REGISTRY_SECRET)),)
 	IMAGE_PULL_SECRETS =
@@ -353,13 +353,15 @@ endif
 .PHONY: install
 install:
 	@cd ../installer;                                     \
-	helm install kubedb-community charts/kubedb-community --wait              \
+	helm install kubedb-community charts/kubedb-community --wait \
 		--namespace=$(KUBE_NAMESPACE)                     \
 		--set-file license=$(LICENSE_FILE)                \
 		--set operator.registry=$(REGISTRY)               \
 		--set operator.repository=mariadb-operator        \
 		--set operator.tag=$(TAG)                         \
-		--set imagePullPolicy=$(IMAGE_PULL_POLICY)		  \
+		--set imagePullPolicy=$(IMAGE_PULL_POLICY)        \
+		--set monitoring.enabled=false                    \
+		--set monitoring.agent="prometheus.io/operator"   \
 		$(IMAGE_PULL_SECRETS);                            \
 	kubectl wait --for=condition=Available apiservice -l 'app.kubernetes.io/name=kubedb,app.kubernetes.io/instance=kubedb-community' --timeout=5m; \
 	until kubectl get crds mariadbversions.catalog.kubedb.com -o=jsonpath='{.items[0].metadata.name}' &> /dev/null; do sleep 1; done; \
@@ -370,10 +372,11 @@ install:
 		--namespace=$(KUBE_NAMESPACE)                     \
 		--set catalog.elasticsearch=false                 \
 		--set catalog.etcd=false                          \
-		--set catalog.memcached=false                     \
-		--set catalog.mongo=false                         \
-		--set catalog.mysql=false                         \
 		--set catalog.mariadb=true                        \
+		--set catalog.memcached=false                     \
+		--set catalog.mongodb=false                       \
+		--set catalog.mysql=false                         \
+		--set catalog.perconaxtradb=false                 \
 		--set catalog.pgbouncer=false                     \
 		--set catalog.postgres=false                      \
 		--set catalog.proxysql=false                      \
